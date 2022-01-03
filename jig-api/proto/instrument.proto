@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package rs.jig.instrument;
+
+import "span.proto";
+
+service Instrument {
+   rpc new_span(NewSpanRequest) returns (NewSpanResponse) {}
+
+   rpc update_span(UpdateSpanRequest) returns (UpdateSpanResponse) {}
+
+   rpc close_span(CloseSpanRequest) returns (CloseSpanResponse) {}
+
+   rpc on_event(OnEventRequest) returns (OnEventResponse) {}
+}
+
+message NewSpanRequest {
+    Span span = 1;
+}
+
+message UpdateSpanRequest {
+    SpanId id = 1;
+}
+
+message CloseSpanRequest {
+    SpanId id = 1;
+}
+
+message OnEventRequest {}
+
+message NewSpanResponse {}
+
+message UpdateSpanResponse {}
+
+message CloseSpanResponse {}
+
+message OnEventResponse {}
