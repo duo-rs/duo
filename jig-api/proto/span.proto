@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package rs.jig.span;
 import "google/protobuf/timestamp/timestamp.proto";
-import "google/protobuf/duration.proto";
 
 // Unique identifier for spans.
 message SpanId {

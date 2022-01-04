@@ -15,15 +15,15 @@ service Instrument {
 }
 
 message NewSpanRequest {
-    Span span = 1;
+    span.Span span = 1;
 }
 
 message UpdateSpanRequest {
-    SpanId id = 1;
+    span.SpanId id = 1;
 }
 
 message CloseSpanRequest {
-    SpanId id = 1;
+    span.SpanId id = 1;
 }
 
 message OnEventRequest {}
