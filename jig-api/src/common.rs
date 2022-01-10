@@ -1,5 +1,17 @@
 tonic::include_proto!("rs.jig.common");
 
+impl From<tracing_core::Level> for Level {
+    fn from(level: tracing_core::Level) -> Self {
+        match level {
+            tracing_core::Level::ERROR => Level::Error,
+            tracing_core::Level::WARN => Level::Warn,
+            tracing_core::Level::INFO => Level::Info,
+            tracing_core::Level::DEBUG => Level::Debug,
+            tracing_core::Level::TRACE => Level::Trace,
+        }
+    }
+}
+
 impl From<value::Inner> for Value {
     fn from(inner: value::Inner) -> Self {
         Value { inner: Some(inner) }

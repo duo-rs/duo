@@ -4,6 +4,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let proto_files = &[
         "proto/common.proto",
         "proto/instrument.proto",
+        "proto/log.proto",
         "proto/span.proto",
     ];
 

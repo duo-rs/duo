@@ -2,6 +2,28 @@ syntax = "proto3";
 
 package rs.jig.common;
 
+enum Level {
+    // The "error" level.
+    //
+    // Designates very serious errors.
+    ERROR = 0;
+    // The "warn" level.
+    //
+    // Designates hazardous situations.
+    WARN = 1;
+    // The "info" level.
+    // Designates useful information.
+    INFO = 2;
+    // The "debug" level.
+    //
+    // Designates lower priority information.
+    DEBUG = 3;
+    // The "trace" level.
+    //
+    // Designates very low priority, often extremely verbose, information.
+    TRACE = 4;
+}
+
 // The value of the key-value pair.
 message Value {
     oneof inner {

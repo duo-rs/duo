@@ -55,7 +55,31 @@ where
         }
     }
 
-    fn on_event(&self, _event: &tracing::Event<'_>, _ctx: Context<'_, S>) {}
+    fn on_event(&self, event: &tracing::Event<'_>, ctx: Context<'_, S>) {
+        let parent_span_ref = if let Some(parent) = event.parent() {
+            ctx.span(parent)
+        } else if event.is_contextual() {
+            ctx.lookup_current()
+        } else {
+            None
+        };
+
+        let span_id = parent_span_ref.and_then(|span_ref| {
+            span_ref
+                .extensions()
+                .get::<proto::Span>()
+                .map(|span| span.id)
+        });
+
+        let metadata = event.metadata();
+        let fields = HashMap::with_capacity(metadata.fields().len());
+        let log = proto::Log {
+            span_id,
+            level: proto::Level::from(*metadata.level()) as i32,
+            time: Some(SystemTime::now().into()),
+            fields,
+        };
+    }
 
     fn on_enter(&self, _id: &span::Id, _ctx: Context<'_, S>) {}
 
