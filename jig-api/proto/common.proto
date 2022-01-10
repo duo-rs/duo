@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package rs.jig.common;
+
+// The value of the key-value pair.
+message Value {
+    oneof inner {
+        // A value serialized to a string using `fmt::Debug`.
+        string debug_val = 2;
+        // A string value.
+        string str_val = 3;
+        // An unsigned integer value.
+        uint64 u64_val = 4;
+        // A signed integer value.
+        sint64 i64_val = 5;
+        // A boolean value.
+        bool bool_val = 6;
+    }
+}

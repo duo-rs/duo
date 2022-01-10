@@ -1,21 +1,17 @@
 syntax = "proto3";
 
 package rs.jig.span;
-import "google/protobuf/timestamp/timestamp.proto";
 
-// Unique identifier for spans.
-message SpanId {
-    // The unique identifier's concrete value.
-    uint64 id = 1;
-}
+import "google/protobuf/timestamp/timestamp.proto";
+import "common.proto";
 
 message Span {
     // Span id
-    SpanId id = 1;
+    uint64 id = 1;
     // Trace id
     optional uint64 trace_id = 2;
     // Parent span id
-    optional SpanId parent_id = 3;
+    optional uint64 parent_id = 3;
     // Span name
     string name = 4;
     // Start timestamp
@@ -23,5 +19,5 @@ message Span {
     // End timestamp
     optional google.protobuf.Timestamp end = 6;
     // Span's tags
-    map<string, string> tags = 7;
+    map<string, common.Value> tags = 7;
 }

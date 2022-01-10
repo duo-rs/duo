@@ -4,5 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+jig-api = { version = "0.1", path = "../jig-api" }
+rand = "0.8.4"
 tracing = "0.1.29"
 tracing-subscriber = "0.3.4"
