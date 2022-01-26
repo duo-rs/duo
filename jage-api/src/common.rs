@@ -1,4 +1,4 @@
-tonic::include_proto!("rs.jig.common");
+tonic::include_proto!("rs.jage.common");
 
 impl From<tracing_core::Level> for Level {
     fn from(level: tracing_core::Level) -> Self {

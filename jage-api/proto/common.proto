@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package rs.jig.common;
+package rs.jage.common;
 
 enum Level {
     // The "error" level.

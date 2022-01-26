@@ -8,9 +8,9 @@ use tracing::{
     Subscriber,
 };
 use tracing_subscriber::{layer::Context, registry::LookupSpan, Layer};
-pub struct JigLayer {}
+pub struct JageLayer {}
 
-impl<S> Layer<S> for JigLayer
+impl<S> Layer<S> for JageLayer
 where
     S: Subscriber + for<'span> LookupSpan<'span>,
 {

@@ -1,2 +1,2 @@
 [workspace]
-members = ["jig", "jig-api", "jig-subscriber"]
+members = ["jage", "jage-api", "jage-subscriber"]

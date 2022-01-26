@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package rs.jig.instrument;
+package rs.jage.instrument;
 
 import "span.proto";
 

@@ -1,2 +1,2 @@
-# jig
+# Jage
 Tracing observability without Jaeger

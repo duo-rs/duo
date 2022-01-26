@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package rs.jig.span;
+package rs.jage.span;
 
 import "google/protobuf/timestamp/timestamp.proto";
 import "common.proto";
