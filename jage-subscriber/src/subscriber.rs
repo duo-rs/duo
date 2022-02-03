@@ -1,14 +1,55 @@
 use std::{collections::HashMap, time::SystemTime};
 
-use crate::{proto, visitor::SpanAttributeVisitor};
+use crate::{conn::Connection, proto, visitor::SpanAttributeVisitor};
 use rand::rngs::ThreadRng;
 use rand::Rng;
+use tokio::sync::mpsc::{self, error::TrySendError, Sender};
+use tonic::transport::Uri;
 use tracing::{
     span::{self, Attributes},
     Subscriber,
 };
 use tracing_subscriber::{layer::Context, registry::LookupSpan, Layer};
-pub struct JageLayer {}
+
+pub struct JageLayer {
+    sender: Sender<Message>,
+}
+
+#[derive(Debug)]
+enum Message {
+    NewSpan(proto::Span),
+    CloseSpan(proto::Span),
+    Event(proto::Log),
+}
+
+impl JageLayer {
+    pub async fn new(uri: Uri) -> Self {
+        let (sender, mut receiver) = mpsc::channel(2048);
+        let mut client = Connection::connect(uri).await;
+        tokio::spawn(async move {
+            while let Some(message) = receiver.recv().await {
+                match message {
+                    Message::NewSpan(span) | Message::CloseSpan(span) => {
+                        client.record_span(span).await
+                    }
+                    Message::Event(log) => {
+                        client.record_event(log).await;
+                    }
+                }
+            }
+        });
+        JageLayer { sender }
+    }
+
+    #[inline]
+    fn send_message(&self, message: Message) {
+        match self.sender.try_send(message) {
+            Ok(_) => {}
+            Err(TrySendError::Closed(_)) => {}
+            Err(TrySendError::Full(_)) => {}
+        }
+    }
+}
 
 impl<S> Layer<S> for JageLayer
 where
@@ -51,6 +92,7 @@ where
                 tags,
             };
             attrs.record(&mut SpanAttributeVisitor(&mut span));
+            self.send_message(Message::NewSpan(span.clone()));
             extension.insert(span);
         }
     }
@@ -79,6 +121,7 @@ where
             time: Some(SystemTime::now().into()),
             fields,
         };
+        self.send_message(Message::Event(log));
     }
 
     fn on_enter(&self, _id: &span::Id, _ctx: Context<'_, S>) {}
@@ -110,6 +153,7 @@ where
             let mut extensions = span_ref.extensions_mut();
             if let Some(mut span) = extensions.remove::<proto::Span>() {
                 span.end = Some(SystemTime::now().into());
+                self.send_message(Message::CloseSpan(span));
             }
         }
     }

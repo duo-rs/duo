@@ -3,35 +3,22 @@ syntax = "proto3";
 package rs.jage.instrument;
 
 import "span.proto";
+import "log.proto";
 
 service Instrument {
-   rpc new_span(NewSpanRequest) returns (NewSpanResponse) {}
+   rpc record_span(RecordSpanRequest) returns (RecordSpanResponse) {}
 
-   rpc update_span(UpdateSpanRequest) returns (UpdateSpanResponse) {}
-
-   rpc close_span(CloseSpanRequest) returns (CloseSpanResponse) {}
-
-   rpc on_event(OnEventRequest) returns (OnEventResponse) {}
+   rpc record_event(RecordEventRequest) returns (RecordEventResponse) {}
 }
 
-message NewSpanRequest {
-    uint64 span = 1;
+message RecordSpanRequest {
+    span.Span span = 1;
 }
 
-message UpdateSpanRequest {
-    uint64 id = 1;
+message RecordEventRequest {
+    log.Log log = 1;
 }
 
-message CloseSpanRequest {
-    uint64 id = 1;
-}
+message RecordSpanResponse {}
 
-message OnEventRequest {}
-
-message NewSpanResponse {}
-
-message UpdateSpanResponse {}
-
-message CloseSpanResponse {}
-
-message OnEventResponse {}
+message RecordEventResponse {}
