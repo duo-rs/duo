@@ -2,23 +2,27 @@ use std::time::Duration;
 
 use jage_subscriber::JageLayer;
 use tonic::transport::Uri;
-use tracing::Level;
+use tracing::{debug, Level};
 use tracing_subscriber::{
     self, filter::Targets, fmt, layer::SubscriberExt, util::SubscriberInitExt,
 };
 
 #[tracing::instrument]
 fn foo() {
+    debug!("hello foo!");
     bar();
 }
 
 #[tracing::instrument]
 fn bar() {
+    debug!("hello bar!");
     baz();
 }
 
 #[tracing::instrument]
-fn baz() {}
+fn baz() {
+    debug!("hello baz!");
+}
 
 #[tokio::main]
 async fn main() {

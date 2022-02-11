@@ -8,7 +8,8 @@ use jage::JageServer;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Hello Jage!");
     let addr = "127.0.0.1:6000".parse().unwrap();
-    let service = JageServer {};
+    let mut service = JageServer::new();
+    service.bootstrap();
     Server::builder()
         .add_service(InstrumentServer::new(service))
         .serve(addr)
