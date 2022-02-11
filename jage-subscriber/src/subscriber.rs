@@ -78,12 +78,6 @@ where
                 .unwrap_or_default();
 
             let rand_id = ThreadRng::default().gen();
-            let trace_id = if trace_id.is_none() {
-                Some(rand_id)
-            } else {
-                None
-            };
-
             let metadata = attrs.metadata();
             let mut tags = HashMap::with_capacity(3 + metadata.fields().len());
             if let (Some(file), Some(line)) = (metadata.file(), metadata.line()) {
@@ -91,7 +85,8 @@ where
             }
             let mut span = proto::Span {
                 id: rand_id,
-                trace_id,
+                // Use parent's trace_id if exists, otherwise use the newly generated one.
+                trace_id: trace_id.or(Some(rand_id)),
                 parent_id,
                 name: metadata.name().into(),
                 start: Some(SystemTime::now().into()),

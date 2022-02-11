@@ -7,6 +7,19 @@ use tracing_subscriber::{
     self, filter::Targets, fmt, layer::SubscriberExt, util::SubscriberInitExt,
 };
 
+#[tracing::instrument]
+fn foo() {
+    bar();
+}
+
+#[tracing::instrument]
+fn bar() {
+    baz();
+}
+
+#[tracing::instrument]
+fn baz() {}
+
 #[tokio::main]
 async fn main() {
     let fmt_layer = fmt::layer();
@@ -23,6 +36,6 @@ async fn main() {
         .init();
 
     tracing::debug!("Bootstrap...");
-
+    foo();
     tokio::time::sleep(Duration::from_secs(3)).await;
 }
