@@ -67,11 +67,18 @@ where
                 None
             };
 
-            let parent_id = parent_span
-                .and_then(|span_ref| span_ref.extensions().get::<proto::Span>().map(|s| s.id));
+            // Obtain parent_id and trace_id from parent span.
+            let (parent_id, trace_id) = parent_span
+                .and_then(|span_ref| {
+                    span_ref
+                        .extensions()
+                        .get::<proto::Span>()
+                        .map(|s| (Some(s.id), s.trace_id))
+                })
+                .unwrap_or_default();
 
             let rand_id = ThreadRng::default().gen();
-            let trace_id = if parent_id.is_none() {
+            let trace_id = if trace_id.is_none() {
                 Some(rand_id)
             } else {
                 None
