@@ -11,6 +11,17 @@ impl From<tracing_core::Level> for Level {
         }
     }
 }
+impl From<Level> for tracing_core::Level {
+    fn from(level: Level) -> Self {
+        match level {
+            Level::Error => tracing_core::Level::ERROR,
+            Level::Warn => tracing_core::Level::WARN,
+            Level::Info => tracing_core::Level::INFO,
+            Level::Debug => tracing_core::Level::DEBUG,
+            Level::Trace => tracing_core::Level::TRACE,
+        }
+    }
+}
 
 impl From<value::Inner> for Value {
     fn from(inner: value::Inner) -> Self {

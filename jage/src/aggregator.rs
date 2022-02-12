@@ -1,11 +1,24 @@
 use jage_api as proto;
 
-use std::collections::{hash_map::Entry, HashMap};
+use std::{
+    collections::{hash_map::Entry, HashMap, HashSet},
+    mem,
+    time::SystemTime,
+};
+
+use crate::{Log, Trace};
 
 #[derive(Debug, Default)]
 pub struct Aggregator {
+    // <span_id, Span>
     spans: HashMap<u64, proto::Span>,
     logs: Vec<proto::Log>,
+}
+
+#[derive(Debug)]
+pub struct TraceBundle {
+    traces: HashMap<u64, Trace>,
+    logs: Vec<Log>,
 }
 
 impl Aggregator {
@@ -41,5 +54,42 @@ impl Aggregator {
         self.logs.push(log);
     }
 
-    pub fn aggregate(&mut self) {}
+    pub fn aggregate(&mut self) -> TraceBundle {
+        let mut traces = HashMap::new();
+        self.spans.values().for_each(|span| {
+            let trace_id = span.trace_id.unwrap_or_default();
+            let trace = traces.entry(trace_id).or_insert(Trace {
+                app_name: String::new(),
+                id: trace_id,
+                duration: 0,
+                time: SystemTime::now(),
+                spans: HashSet::new(),
+                intact: true,
+            });
+            let target_span = crate::Span::from(span);
+            trace.duration = trace.duration.max(target_span.duration());
+            trace.time = trace.time.min(target_span.start);
+
+            if span.end.is_none() {
+                trace.intact = false;
+            }
+
+            trace.spans.replace(target_span);
+        });
+
+        // Remove all spans of intact traces.
+        traces
+            .values()
+            .filter(|trace| trace.intact)
+            .for_each(|trace| {
+                self.spans.retain(|_, span| span.trace_id != Some(trace.id));
+            });
+
+        let capacity = self.logs.capacity();
+        let logs = mem::replace(&mut self.logs, Vec::with_capacity(capacity));
+        TraceBundle {
+            traces,
+            logs: logs.into_iter().map(Log::from).collect(),
+        }
+    }
 }

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use jage_api as proto;
 use parking_lot::RwLock;
@@ -9,9 +9,15 @@ use proto::instrument::{
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tonic::{Request, Response, Status};
 
-use crate::Aggregator;
+use crate::{Aggregator, Log, Trace};
 
+#[derive(Debug)]
 pub struct JageServer {
+    // <trace_id, Trace>
+    traces: HashMap<u64, Trace>,
+    logs: Vec<Log>,
+    // <span_id, Vec<log id>>
+    span_log_map: HashMap<u64, Vec<u64>>,
     aggregator: Arc<RwLock<Aggregator>>,
     sender: Sender<Message>,
     receiver: Arc<RwLock<Receiver<Message>>>,
@@ -23,14 +29,23 @@ enum Message {
     Log(proto::Log),
 }
 
-impl JageServer {
-    pub fn new() -> Self {
+impl Default for JageServer {
+    fn default() -> Self {
         let (sender, receiver) = channel::<Message>(4096);
         Self {
+            traces: HashMap::default(),
+            logs: Vec::new(),
+            span_log_map: HashMap::default(),
             aggregator: Arc::new(RwLock::new(Aggregator::new())),
             sender,
             receiver: Arc::new(RwLock::new(receiver)),
         }
+    }
+}
+
+impl JageServer {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn bootstrap(&mut self) {
