@@ -1,5 +1,6 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{sync::Arc, time::Duration};
 
+use dashmap::DashMap;
 use jage_api as proto;
 use parking_lot::RwLock;
 use proto::instrument::{
@@ -11,13 +12,12 @@ use tonic::{Request, Response, Status};
 
 use crate::{Aggregator, Log, Trace};
 
-#[derive(Debug)]
 pub struct JageServer {
     // <trace_id, Trace>
-    traces: HashMap<u64, Trace>,
-    logs: Vec<Log>,
+    traces: Arc<DashMap<u64, Trace>>,
+    logs: Arc<RwLock<Vec<Log>>>,
     // <span_id, Vec<log id>>
-    span_log_map: HashMap<u64, Vec<u64>>,
+    span_log_map: Arc<DashMap<u64, Vec<usize>>>,
     aggregator: Arc<RwLock<Aggregator>>,
     sender: Sender<Message>,
     receiver: Arc<RwLock<Receiver<Message>>>,
@@ -33,9 +33,9 @@ impl Default for JageServer {
     fn default() -> Self {
         let (sender, receiver) = channel::<Message>(4096);
         Self {
-            traces: HashMap::default(),
-            logs: Vec::new(),
-            span_log_map: HashMap::default(),
+            traces: Arc::new(DashMap::default()),
+            logs: Arc::new(RwLock::new(Vec::new())),
+            span_log_map: Arc::new(DashMap::default()),
             aggregator: Arc::new(RwLock::new(Aggregator::new())),
             sender,
             receiver: Arc::new(RwLock::new(receiver)),
@@ -63,6 +63,51 @@ impl JageServer {
                     }
                     None => {}
                 }
+            }
+        });
+
+        let aggregator = Arc::clone(&self.aggregator);
+        let traces = Arc::clone(&self.traces);
+        let logs = Arc::clone(&self.logs);
+        let span_log_map = Arc::clone(&self.span_log_map);
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(1));
+            loop {
+                interval.tick().await;
+                let bundle = aggregator.write().aggregate();
+
+                bundle.traces.into_iter().for_each(|(id, trace)| {
+                    traces.insert(id, trace);
+                });
+
+                let mut logs = logs.write();
+                // Reserve capacity advanced.
+                logs.reserve(bundle.logs.len());
+                let base_idx = logs.len();
+                bundle
+                    .logs
+                    .into_iter()
+                    .enumerate()
+                    .for_each(|(i, mut log)| {
+                        let idx = base_idx + i;
+
+                        // Exclude those logs without span_id,
+                        // normally they are not emitted in tracing context.
+                        if let Some(span_id) = log.span_id {
+                            let mut log_idxs = span_log_map.entry(span_id).or_default();
+                            log_idxs.push(idx);
+                        }
+
+                        log.idx = idx;
+                        logs.push(log);
+                    });
+
+                println!(
+                    "After tick - traces: {}, logs: {}, span_log_map: {:?}",
+                    traces.len(),
+                    logs.len(),
+                    span_log_map
+                );
             }
         });
     }
