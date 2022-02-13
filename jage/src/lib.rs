@@ -2,6 +2,7 @@ use jage_api as proto;
 use std::{
     collections::{HashMap, HashSet},
     hash::Hash,
+    num::NonZeroU64,
     time::SystemTime,
 };
 use tracing::Level;
@@ -15,7 +16,7 @@ pub use server::JageServer;
 #[derive(Debug)]
 pub struct Trace {
     pub app_name: String,
-    pub id: u64,
+    pub id: NonZeroU64,
     pub duration: i64,
     pub time: SystemTime,
     pub spans: HashSet<Span>,
@@ -23,8 +24,8 @@ pub struct Trace {
 
 #[derive(Debug)]
 pub struct Span {
-    pub id: u64,
-    pub parent_id: Option<u64>,
+    pub id: NonZeroU64,
+    pub parent_id: Option<NonZeroU64>,
     pub name: String,
     pub start: SystemTime,
     pub end: Option<SystemTime>,
@@ -38,7 +39,7 @@ pub struct Log {
     pub idx: usize,
     /// The span's id the log belong to.
     /// They have no span id if the log emitted out of tracing context.
-    pub span_id: Option<u64>,
+    pub span_id: Option<NonZeroU64>,
     pub level: Level,
     pub time: SystemTime,
     pub fields: HashMap<String, proto::Value>,
@@ -80,8 +81,8 @@ impl Span {
 impl From<&proto::Span> for Span {
     fn from(span: &proto::Span) -> Self {
         Span {
-            id: span.id,
-            parent_id: span.parent_id,
+            id: NonZeroU64::new(span.id).expect("Span id cann not be 0"),
+            parent_id: span.parent_id.map(NonZeroU64::new).flatten(),
             name: span.name.clone(),
             start: span
                 .start
@@ -105,7 +106,7 @@ impl From<proto::Log> for Log {
     fn from(log: proto::Log) -> Self {
         Log {
             idx: 0,
-            span_id: log.span_id,
+            span_id: log.span_id.map(NonZeroU64::new).flatten(),
             level: proto::Level::from_i32(log.level)
                 .map(tracing::Level::from)
                 .unwrap_or(tracing::Level::DEBUG),

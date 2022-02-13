@@ -3,6 +3,7 @@ use jage_api as proto;
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     mem,
+    num::NonZeroU64,
     time::SystemTime,
 };
 
@@ -17,7 +18,7 @@ pub struct Aggregator {
 
 #[derive(Debug)]
 pub struct TraceBundle {
-    pub traces: HashMap<u64, Trace>,
+    pub traces: HashMap<NonZeroU64, Trace>,
     pub logs: Vec<Log>,
 }
 
@@ -61,7 +62,7 @@ impl Aggregator {
             let (trace, is_intact) = traces.entry(trace_id).or_insert((
                 Trace {
                     app_name: String::new(),
-                    id: trace_id,
+                    id: NonZeroU64::new(trace_id).expect("trace id cannot be 0"),
                     duration: 0,
                     time: SystemTime::now(),
                     spans: HashSet::new(),
@@ -84,7 +85,8 @@ impl Aggregator {
         // Remove all spans of intact traces.
         traces.values().for_each(|(trace, is_intact)| {
             if *is_intact {
-                self.spans.retain(|_, span| span.trace_id != Some(trace.id));
+                self.spans
+                    .retain(|_, span| span.trace_id != Some(trace.id.get()));
             }
         });
 
@@ -93,7 +95,7 @@ impl Aggregator {
         TraceBundle {
             traces: traces
                 .into_iter()
-                .map(|(id, (trace, _))| (id, trace))
+                .map(|(_, (trace, _))| (trace.id, trace))
                 .collect(),
             logs: logs.into_iter().map(Log::from).collect(),
         }

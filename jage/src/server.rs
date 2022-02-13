@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::{num::NonZeroU64, sync::Arc, time::Duration};
 
 use dashmap::DashMap;
 use jage_api as proto;
@@ -14,10 +14,10 @@ use crate::{Aggregator, Log, Trace};
 
 pub struct JageServer {
     // <trace_id, Trace>
-    traces: Arc<DashMap<u64, Trace>>,
+    traces: Arc<DashMap<NonZeroU64, Trace>>,
     logs: Arc<RwLock<Vec<Log>>>,
     // <span_id, Vec<log id>>
-    span_log_map: Arc<DashMap<u64, Vec<usize>>>,
+    span_log_map: Arc<DashMap<NonZeroU64, Vec<usize>>>,
     aggregator: Arc<RwLock<Aggregator>>,
     sender: Sender<Message>,
     receiver: Arc<RwLock<Receiver<Message>>>,
