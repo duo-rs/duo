@@ -19,9 +19,6 @@ pub struct Trace {
     pub duration: i64,
     pub time: SystemTime,
     pub spans: HashSet<Span>,
-    /// Whether the Trace is intact.
-    /// Intact means all spans of this trace have both time values: start and end.
-    pub intact: bool,
 }
 
 #[derive(Debug)]
@@ -37,7 +34,11 @@ pub struct Span {
 
 #[derive(Debug)]
 pub struct Log {
-    pub span_id: u64,
+    /// The numeric id in log collection.
+    pub idx: usize,
+    /// The span's id the log belong to.
+    /// They have no span id if the log emitted out of tracing context.
+    pub span_id: Option<u64>,
     pub level: Level,
     pub time: SystemTime,
     pub fields: HashMap<String, proto::Value>,
@@ -68,6 +69,12 @@ impl Span {
             })
             .unwrap_or_default()
     }
+
+    /// Whether the span is intact.
+    #[inline]
+    pub fn is_intact(&self) -> bool {
+        self.end.is_some()
+    }
 }
 
 impl From<&proto::Span> for Span {
@@ -97,7 +104,8 @@ impl From<&proto::Span> for Span {
 impl From<proto::Log> for Log {
     fn from(log: proto::Log) -> Self {
         Log {
-            span_id: log.span_id.unwrap_or_default(),
+            idx: 0,
+            span_id: log.span_id,
             level: proto::Level::from_i32(log.level)
                 .map(tracing::Level::from)
                 .unwrap_or(tracing::Level::DEBUG),

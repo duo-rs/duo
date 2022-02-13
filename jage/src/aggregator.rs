@@ -17,8 +17,8 @@ pub struct Aggregator {
 
 #[derive(Debug)]
 pub struct TraceBundle {
-    traces: HashMap<u64, Trace>,
-    logs: Vec<Log>,
+    pub traces: HashMap<u64, Trace>,
+    pub logs: Vec<Log>,
 }
 
 impl Aggregator {
@@ -58,37 +58,43 @@ impl Aggregator {
         let mut traces = HashMap::new();
         self.spans.values().for_each(|span| {
             let trace_id = span.trace_id.unwrap_or_default();
-            let trace = traces.entry(trace_id).or_insert(Trace {
-                app_name: String::new(),
-                id: trace_id,
-                duration: 0,
-                time: SystemTime::now(),
-                spans: HashSet::new(),
-                intact: true,
-            });
+            let (trace, is_intact) = traces.entry(trace_id).or_insert((
+                Trace {
+                    app_name: String::new(),
+                    id: trace_id,
+                    duration: 0,
+                    time: SystemTime::now(),
+                    spans: HashSet::new(),
+                },
+                // Whether the trace is intact.
+                // Intact means all spans of this trace have both time values: start and end.
+                true,
+            ));
             let target_span = crate::Span::from(span);
             trace.duration = trace.duration.max(target_span.duration());
             trace.time = trace.time.min(target_span.start);
 
             if span.end.is_none() {
-                trace.intact = false;
+                *is_intact = false;
             }
 
             trace.spans.replace(target_span);
         });
 
         // Remove all spans of intact traces.
-        traces
-            .values()
-            .filter(|trace| trace.intact)
-            .for_each(|trace| {
+        traces.values().for_each(|(trace, is_intact)| {
+            if *is_intact {
                 self.spans.retain(|_, span| span.trace_id != Some(trace.id));
-            });
+            }
+        });
 
         let capacity = self.logs.capacity();
         let logs = mem::replace(&mut self.logs, Vec::with_capacity(capacity));
         TraceBundle {
-            traces,
+            traces: traces
+                .into_iter()
+                .map(|(id, (trace, _))| (id, trace))
+                .collect(),
             logs: logs.into_iter().map(Log::from).collect(),
         }
     }
