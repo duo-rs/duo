@@ -108,6 +108,11 @@ where
             None
         };
 
+        // Ignore those log emited out of tracing context.
+        if parent_span_ref.is_none() {
+            return;
+        }
+
         let span_id = parent_span_ref.and_then(|span_ref| {
             span_ref
                 .extensions()

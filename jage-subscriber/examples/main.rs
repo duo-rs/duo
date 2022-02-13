@@ -11,6 +11,7 @@ use tracing_subscriber::{
 fn foo() {
     debug!("hello foo!");
     bar();
+    debug!("called bar!");
 }
 
 #[tracing::instrument]
