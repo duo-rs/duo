@@ -8,10 +8,12 @@ use std::{
 use tracing::Level;
 
 mod aggregator;
-mod server;
+mod grpc;
+mod web;
 
 pub use aggregator::Aggregator;
-pub use server::JageServer;
+pub use grpc::spawn_server as spawn_grpc_server;
+pub use web::run_web_server;
 
 #[derive(Debug)]
 pub struct Trace {
