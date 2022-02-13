@@ -6,3 +6,4 @@ pub mod span;
 pub use common::{Level, Value};
 pub use log::Log;
 pub use span::Span;
+pub use common::value::Inner as ValueEnum;
