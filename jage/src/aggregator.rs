@@ -17,7 +17,7 @@ pub struct Aggregator {
 }
 
 #[derive(Debug)]
-pub struct TraceBundle {
+pub struct AggregatedData {
     pub traces: HashMap<NonZeroU64, Trace>,
     pub logs: Vec<Log>,
 }
@@ -55,7 +55,7 @@ impl Aggregator {
         self.logs.push(log);
     }
 
-    pub fn aggregate(&mut self) -> TraceBundle {
+    pub fn aggregate(&mut self) -> AggregatedData {
         let mut traces = HashMap::new();
         self.spans.values().for_each(|span| {
             let trace_id = span.trace_id.unwrap_or_default();
@@ -92,7 +92,7 @@ impl Aggregator {
 
         let capacity = self.logs.capacity();
         let logs = mem::replace(&mut self.logs, Vec::with_capacity(capacity));
-        TraceBundle {
+        AggregatedData {
             traces: traces
                 .into_iter()
                 .map(|(_, (trace, _))| (trace.id, trace))
