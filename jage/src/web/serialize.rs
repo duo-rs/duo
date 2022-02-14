@@ -110,7 +110,12 @@ impl<'a> Serialize for TraceSpan<'a> {
         map.serialize_entry("references", &references)?;
 
         map.serialize_entry("spanID", &span.id.to_string())?;
-        map.serialize_entry("operationName", &span.name)?;
+        if span.is_intact() {
+            map.serialize_entry("operationName", &span.name)?;
+        } else {
+            // The span isn't intact, add * to the operationName for indication.
+            map.serialize_entry("operationName", &format!("{}*", span.name))?;
+        }
         map.serialize_entry(
             "startTime",
             &(span
