@@ -1,4 +1,4 @@
-use std::num::NonZeroU64;
+use std::{num::NonZeroU64, time::SystemTime};
 
 use jage_api as proto;
 use serde::{ser::SerializeMap, Serialize, Serializer};
@@ -75,8 +75,14 @@ impl<'a> Serialize for TraceSpan<'a> {
                 S: Serializer,
             {
                 let mut map = serializer.serialize_map(Some(2))?;
-                // TODO: timestamp
-                // map.serialize_entry("timestamp", &(self.0.time.timestamp_nanos() / 1000))?;
+                map.serialize_entry(
+                    "timestamp",
+                    &(self
+                        .0
+                        .time
+                        .duration_since(SystemTime::UNIX_EPOCH)
+                        .expect("SystemTime before UNIX EPOCH!")),
+                )?;
                 let fields: Vec<_> = self
                     .0
                     .fields
@@ -105,8 +111,13 @@ impl<'a> Serialize for TraceSpan<'a> {
 
         map.serialize_entry("spanID", &span.id.to_string())?;
         map.serialize_entry("operationName", &span.name)?;
-        // TODO: timestamp
-        // map.serialize_entry("startTime", &(span.start_time.timestamp_nanos() / 1000))?;
+        map.serialize_entry(
+            "startTime",
+            &(span
+                .start
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .expect("SystemTime before UNIX EPOCH!")),
+        )?;
         map.serialize_entry("duration", &span.duration())?;
 
         let tags: Vec<_> = span
