@@ -6,6 +6,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         "proto/instrument.proto",
         "proto/log.proto",
         "proto/span.proto",
+        "proto/process.proto",
     ];
 
     let dirs = &["proto"];

@@ -8,6 +8,13 @@ use std::{
 use tracing::Level;
 
 #[derive(Debug)]
+pub struct Process {
+    id: u32,
+    name: String,
+    tags: HashMap<String, proto::Value>,
+}
+
+#[derive(Debug)]
 pub struct Trace {
     pub app_name: String,
     pub id: NonZeroU64,
