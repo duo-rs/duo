@@ -4,11 +4,22 @@ package rs.jage.instrument;
 
 import "span.proto";
 import "log.proto";
+import "process.proto";
 
 service Instrument {
+    // Register a new process and get the process id.
+    //
+    // The registration is name-agnostic, each new registration
+    // with the same process name, alwasy get a brand new process id.
+   rpc register_process(RegisterProcessRequest) returns (RegisterProcessResponse) {}
+
    rpc record_span(RecordSpanRequest) returns (RecordSpanResponse) {}
 
    rpc record_event(RecordEventRequest) returns (RecordEventResponse) {}
+}
+
+message RegisterProcessRequest {
+    process.Process process = 1;
 }
 
 message RecordSpanRequest {
@@ -17,6 +28,10 @@ message RecordSpanRequest {
 
 message RecordEventRequest {
     log.Log log = 1;
+}
+
+message RegisterProcessResponse {
+    uint32 process_id = 1;
 }
 
 message RecordSpanResponse {}

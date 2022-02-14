@@ -29,7 +29,7 @@ fn baz() {
 async fn main() {
     let fmt_layer = fmt::layer();
     let uri = Uri::from_static("http://127.0.0.1:6000");
-    let jage_layer = JageLayer::new(uri).await;
+    let jage_layer = JageLayer::new("example", uri).await;
     tracing_subscriber::registry()
         .with(fmt_layer)
         .with(jage_layer)

@@ -7,7 +7,7 @@ use std::{
     time::SystemTime,
 };
 
-use crate::{Log, Trace};
+use crate::{Log, Span, Trace};
 
 #[derive(Debug, Default)]
 pub struct Aggregator {
@@ -71,7 +71,7 @@ impl Aggregator {
                 // Intact means all spans of this trace have both time values: start and end.
                 true,
             ));
-            let target_span = crate::Span::from(span);
+            let target_span = Span::from(span);
             trace.duration = trace.duration.max(target_span.duration());
             trace.time = trace.time.min(target_span.start);
 

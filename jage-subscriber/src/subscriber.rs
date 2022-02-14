@@ -23,9 +23,9 @@ enum Message {
 }
 
 impl JageLayer {
-    pub async fn new(uri: Uri) -> Self {
+    pub async fn new(name: &'static str, uri: Uri) -> Self {
         let (sender, mut receiver) = mpsc::channel(2048);
-        let mut client = Connection::connect(uri).await;
+        let mut client = Connection::connect(name, uri).await;
         tokio::spawn(async move {
             while let Some(message) = receiver.recv().await {
                 match message {

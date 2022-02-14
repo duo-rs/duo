@@ -11,7 +11,7 @@ impl Connection {
     const BACKOFF: Duration = Duration::from_millis(500);
     const MAX_BACKOFF: Duration = Duration::from_secs(5);
 
-    pub async fn connect(uri: Uri) -> JageClient {
+    pub async fn connect(name: &'static str, uri: Uri) -> JageClient {
         let mut backoff = Duration::from_secs(0);
         loop {
             if backoff == Duration::from_secs(0) {
@@ -29,7 +29,9 @@ impl Connection {
             match try_connect.await {
                 Ok(connected_client) => {
                     tracing::debug!("connected successfully!");
-                    return JageClient::new(connected_client);
+                    let mut client = JageClient::new(name, connected_client);
+                    client.registry_process().await;
+                    return client;
                 }
                 Err(error) => {
                     tracing::warn!(%error, "error connecting");

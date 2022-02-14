@@ -9,9 +9,9 @@ use tracing::Level;
 
 #[derive(Debug)]
 pub struct Process {
-    id: u32,
-    name: String,
-    tags: HashMap<String, proto::Value>,
+    pub id: u32,
+    pub name: String,
+    pub tags: HashMap<String, proto::Value>,
 }
 
 #[derive(Debug)]
