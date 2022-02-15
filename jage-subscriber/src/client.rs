@@ -40,7 +40,10 @@ impl JageClient {
 
     pub async fn record_span(&mut self, span: proto::Span) {
         self.inner
-            .record_span(Request::new(RecordSpanRequest { span: Some(span) }))
+            .record_span(Request::new(RecordSpanRequest {
+                process_id: self.process_id,
+                span: Some(span),
+            }))
             .await
             .unwrap();
     }

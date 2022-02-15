@@ -16,11 +16,11 @@ pub struct Process {
 
 #[derive(Debug)]
 pub struct Trace {
-    pub app_name: String,
     pub id: NonZeroU64,
     pub duration: i64,
     pub time: SystemTime,
     pub spans: HashSet<Span>,
+    pub process_id: u32,
 }
 
 #[derive(Debug)]
@@ -32,6 +32,7 @@ pub struct Span {
     pub end: Option<SystemTime>,
     pub tags: HashMap<String, proto::Value>,
     pub logs: Vec<Log>,
+    pub process_id: u32,
 }
 
 #[derive(Debug)]
@@ -79,9 +80,9 @@ impl Span {
     }
 }
 
-impl From<&proto::Span> for Span {
-    fn from(span: &proto::Span) -> Self {
-        Span {
+impl Trace {
+    pub(crate) fn convert_span(&mut self, span: &proto::Span) -> Span {
+        let target = Span {
             id: NonZeroU64::new(span.id).expect("Span id cann not be 0"),
             parent_id: span.parent_id.map(NonZeroU64::new).flatten(),
             name: span.name.clone(),
@@ -99,7 +100,12 @@ impl From<&proto::Span> for Span {
                 .or_else(|| Some(SystemTime::now())),
             tags: span.tags.clone(),
             logs: Vec::new(),
-        }
+            process_id: self.process_id,
+        };
+        self.duration = self.duration.max(target.duration());
+        self.time = self.time.min(target.start);
+
+        target
     }
 }
 

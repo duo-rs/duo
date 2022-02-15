@@ -23,7 +23,8 @@ message RegisterProcessRequest {
 }
 
 message RecordSpanRequest {
-    span.Span span = 1;
+    uint32 process_id = 1;
+    span.Span span = 2;
 }
 
 message RecordEventRequest {

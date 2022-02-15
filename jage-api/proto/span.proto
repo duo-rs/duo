@@ -8,16 +8,19 @@ import "common.proto";
 message Span {
     // Span id
     uint64 id = 1;
+    // The prcess id
+    uint32 process_id = 2;
     // Trace id
-    optional uint64 trace_id = 2;
+    uint64 trace_id = 3;
     // Parent span id
-    optional uint64 parent_id = 3;
+    optional uint64 parent_id = 4;
     // Span name
-    string name = 4;
+    string name = 5;
     // Start timestamp
-    google.protobuf.Timestamp start = 5;
+    google.protobuf.Timestamp start = 6;
     // End timestamp
-    optional google.protobuf.Timestamp end = 6;
+    optional google.protobuf.Timestamp end = 7;
     // Span's tags
-    map<string, common.Value> tags = 7;
+    map<string, common.Value> tags = 8;
+
 }

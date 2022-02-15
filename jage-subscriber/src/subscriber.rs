@@ -67,6 +67,7 @@ where
                 None
             };
 
+            let rand_id = ThreadRng::default().gen();
             // Obtain parent_id and trace_id from parent span.
             let (parent_id, trace_id) = parent_span
                 .and_then(|span_ref| {
@@ -75,9 +76,9 @@ where
                         .get::<proto::Span>()
                         .map(|s| (Some(s.id), s.trace_id))
                 })
-                .unwrap_or_default();
+                // If parent's trace_id not exists, use the newly generated one.
+                .unwrap_or_else(|| (None, rand_id));
 
-            let rand_id = ThreadRng::default().gen();
             let metadata = attrs.metadata();
             let mut tags = HashMap::with_capacity(3 + metadata.fields().len());
             if let (Some(file), Some(line)) = (metadata.file(), metadata.line()) {
@@ -85,13 +86,13 @@ where
             }
             let mut span = proto::Span {
                 id: rand_id,
-                // Use parent's trace_id if exists, otherwise use the newly generated one.
-                trace_id: trace_id.or(Some(rand_id)),
+                trace_id,
                 parent_id,
                 name: metadata.name().into(),
                 start: Some(SystemTime::now().into()),
                 end: None,
                 tags,
+                process_id: 0,
             };
             attrs.record(&mut SpanAttributeVisitor(&mut span));
             self.send_message(Message::NewSpan(span.clone()));

@@ -7,10 +7,12 @@ use std::{
     time::SystemTime,
 };
 
-use crate::{Log, Span, Trace};
+use crate::{Log, Trace};
 
 #[derive(Debug, Default)]
 pub struct Aggregator {
+    // <trace_id, process_id>
+    process_map: HashMap<u64, u32>,
     // <span_id, Span>
     spans: HashMap<u64, proto::Span>,
     logs: Vec<proto::Log>,
@@ -18,6 +20,7 @@ pub struct Aggregator {
 
 #[derive(Debug)]
 pub struct AggregatedData {
+    // <trace_id, Trace>
     pub traces: HashMap<NonZeroU64, Trace>,
     pub logs: Vec<Log>,
 }
@@ -25,6 +28,7 @@ pub struct AggregatedData {
 impl Aggregator {
     pub fn new() -> Self {
         Aggregator {
+            process_map: HashMap::default(),
             spans: HashMap::default(),
             logs: Vec::new(),
         }
@@ -45,6 +49,8 @@ impl Aggregator {
                 target_span.end = span.end;
             }
             Entry::Vacant(entry) => {
+                // Correlate the trace id and process id.
+                self.process_map.insert(span.trace_id, span.process_id);
                 entry.insert(span);
             }
         }
@@ -58,10 +64,10 @@ impl Aggregator {
     pub fn aggregate(&mut self) -> AggregatedData {
         let mut traces = HashMap::new();
         self.spans.values().for_each(|span| {
-            let trace_id = span.trace_id.unwrap_or_default();
+            let trace_id = span.trace_id;
             let (trace, is_intact) = traces.entry(trace_id).or_insert((
                 Trace {
-                    app_name: String::new(),
+                    process_id: self.process_map.get(&trace_id).copied().unwrap_or_default(),
                     id: NonZeroU64::new(trace_id).expect("trace id cannot be 0"),
                     duration: 0,
                     time: SystemTime::now(),
@@ -71,9 +77,7 @@ impl Aggregator {
                 // Intact means all spans of this trace have both time values: start and end.
                 true,
             ));
-            let target_span = Span::from(span);
-            trace.duration = trace.duration.max(target_span.duration());
-            trace.time = trace.time.min(target_span.start);
+            let target_span = trace.convert_span(span);
 
             if span.end.is_none() {
                 *is_intact = false;
@@ -85,8 +89,7 @@ impl Aggregator {
         // Remove all spans of intact traces.
         traces.values().for_each(|(trace, is_intact)| {
             if *is_intact {
-                self.spans
-                    .retain(|_, span| span.trace_id != Some(trace.id.get()));
+                self.spans.retain(|_, span| span.trace_id != trace.id.get());
             }
         });
 
