@@ -1,6 +1,6 @@
 use std::{collections::HashMap, num::NonZeroU64};
 
-use crate::{aggregator::AggregatedData, Log, Process, Trace};
+use crate::{aggregator::AggregatedData, Log, Process, Trace, TraceExt};
 use jage_api as proto;
 
 #[derive(Default)]
@@ -28,6 +28,46 @@ impl std::fmt::Debug for TraceBundle {
 impl TraceBundle {
     pub fn new() -> Self {
         TraceBundle::default()
+    }
+
+    fn processes(&self) -> HashMap<String, Process> {
+        self.prcoesses
+            .iter()
+            .cloned()
+            .enumerate()
+            .map(|(i, process)| (format!("p{}", i + 1), process))
+            .collect()
+    }
+
+    pub(crate) fn transform_traces(&self, process_id: u32) -> Vec<TraceExt> {
+        let processes = self.processes();
+        self.traces
+            .values()
+            .filter(|trace| trace.process_id == process_id)
+            .cloned()
+            .map(|mut trace| {
+                trace.spans = trace
+                    .spans
+                    .into_iter()
+                    .filter_map(|mut span| {
+                        if let Some(idxs) = self.span_log_map.get(&span.id) {
+                            span.logs = idxs
+                                .iter()
+                                .filter_map(|idx| self.logs.get(*idx))
+                                .cloned()
+                                .collect();
+                            Some(span)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                TraceExt {
+                    inner: trace,
+                    processes: processes.clone(),
+                }
+            })
+            .collect()
     }
 
     /// Register new process and return the process id.

@@ -7,14 +7,14 @@ use std::{
 };
 use tracing::Level;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Process {
     pub id: u32,
     pub name: String,
     pub tags: HashMap<String, proto::Value>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Trace {
     pub id: NonZeroU64,
     pub duration: i64,
@@ -23,7 +23,7 @@ pub struct Trace {
     pub process_id: u32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Span {
     pub id: NonZeroU64,
     pub parent_id: Option<NonZeroU64>,
@@ -35,7 +35,7 @@ pub struct Span {
     pub process_id: u32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Log {
     /// The numeric id in log collection.
     pub idx: usize,
@@ -52,7 +52,6 @@ pub struct TraceExt {
     pub inner: Trace,
     pub processes: HashMap<String, Process>,
 }
-
 
 impl Hash for Span {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
