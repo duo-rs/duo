@@ -1,0 +1,3 @@
+[submodule "jage-ui/jaeger-ui"]
+	path = jage-ui/jaeger-ui
+	url = git@github.com:Folyd/jaeger-ui.git

@@ -1,3 +1,4 @@
 [workspace]
 members = ["jage", "jage-api", "jage-subscriber"]
+exclude = ["jage-ui"]
 resolver = "2"
