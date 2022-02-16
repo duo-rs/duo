@@ -76,7 +76,8 @@ impl Serialize for Log {
             &(self
                 .time
                 .duration_since(SystemTime::UNIX_EPOCH)
-                .expect("SystemTime before UNIX EPOCH!")),
+                .expect("SystemTime before UNIX EPOCH!"))
+            .as_micros(),
         )?;
         let fields: Vec<_> = self
             .fields
@@ -120,7 +121,8 @@ impl<'a> Serialize for SpanExt<'a> {
             &(span
                 .start
                 .duration_since(SystemTime::UNIX_EPOCH)
-                .expect("SystemTime before UNIX EPOCH!")),
+                .expect("SystemTime before UNIX EPOCH!"))
+            .as_micros(),
         )?;
         map.serialize_entry("duration", &span.duration())?;
 
