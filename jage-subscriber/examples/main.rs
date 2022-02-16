@@ -9,7 +9,7 @@ use tracing_subscriber::{
 
 #[tracing::instrument]
 fn foo() {
-    debug!("hello foo!");
+    debug!(test = true, "hello foo!");
     bar();
     debug!("called bar!");
 }

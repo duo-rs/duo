@@ -1,6 +1,10 @@
 use std::{collections::HashMap, time::SystemTime};
 
-use crate::{conn::Connection, proto, visitor::SpanAttributeVisitor};
+use crate::{
+    conn::Connection,
+    proto,
+    visitor::{EventAttributeVisitor, SpanAttributeVisitor},
+};
 use rand::rngs::ThreadRng;
 use rand::Rng;
 use tokio::sync::mpsc::{self, error::TrySendError, Sender};
@@ -124,12 +128,13 @@ where
 
         let metadata = event.metadata();
         let fields = HashMap::with_capacity(metadata.fields().len());
-        let log = proto::Log {
+        let mut log = proto::Log {
             span_id,
             level: proto::Level::from(*metadata.level()) as i32,
             time: Some(SystemTime::now().into()),
             fields,
         };
+        event.record(&mut EventAttributeVisitor(&mut log));
         self.send_message(Message::Event(log));
     }
 
