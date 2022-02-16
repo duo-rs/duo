@@ -4,9 +4,17 @@ use jage_api as proto;
 use serde::{ser::SerializeMap, Serialize, Serializer};
 use serde_json::value::Value::Null;
 
-use crate::{Log, Span, Trace};
+use crate::{Log, Process, Span, TraceExt};
 
 use super::JaegerData;
+
+struct SpanExt<'a> {
+    inner: &'a Span,
+    trace_id: NonZeroU64,
+    process: String,
+}
+
+struct KvFields<'a>(&'a String, &'a proto::Value);
 
 struct ReferenceType {
     trace_id: NonZeroU64,
@@ -26,9 +34,7 @@ impl Serialize for ReferenceType {
     }
 }
 
-struct LogFields<'a>(&'a String, &'a proto::Value);
-
-impl<'a> Serialize for LogFields<'a> {
+impl<'a> Serialize for KvFields<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -59,43 +65,36 @@ impl<'a> Serialize for LogFields<'a> {
     }
 }
 
-// Trace id and Span pair.
-struct TraceSpan<'a>(NonZeroU64, &'a Span);
-
-impl<'a> Serialize for TraceSpan<'a> {
+impl Serialize for Log {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        struct LogWrapper<'a>(&'a Log);
+        let mut map = serializer.serialize_map(Some(2))?;
+        map.serialize_entry(
+            "timestamp",
+            &(self
+                .time
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .expect("SystemTime before UNIX EPOCH!")),
+        )?;
+        let fields: Vec<_> = self
+            .fields
+            .iter()
+            .map(|(key, value)| KvFields(key, value))
+            .collect();
+        map.serialize_entry("fields", &fields)?;
+        map.end()
+    }
+}
 
-        impl<'a> Serialize for LogWrapper<'a> {
-            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-            where
-                S: Serializer,
-            {
-                let mut map = serializer.serialize_map(Some(2))?;
-                map.serialize_entry(
-                    "timestamp",
-                    &(self
-                        .0
-                        .time
-                        .duration_since(SystemTime::UNIX_EPOCH)
-                        .expect("SystemTime before UNIX EPOCH!")),
-                )?;
-                let fields: Vec<_> = self
-                    .0
-                    .fields
-                    .iter()
-                    .map(|(key, value)| LogFields(key, value))
-                    .collect();
-                map.serialize_entry("fields", &fields)?;
-                map.end()
-            }
-        }
-
-        let trace_id = self.0;
-        let span = self.1;
+impl<'a> Serialize for SpanExt<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let trace_id = self.trace_id;
+        let span = self.inner;
 
         let mut map = serializer.serialize_map(Some(11))?;
         map.serialize_entry("traceID", &trace_id.to_string())?;
@@ -128,19 +127,12 @@ impl<'a> Serialize for TraceSpan<'a> {
         let tags: Vec<_> = span
             .tags
             .iter()
-            .map(|(key, value)| LogFields(key, value))
+            .map(|(key, value)| KvFields(key, value))
             .collect();
         map.serialize_entry("tags", &tags)?;
+        map.serialize_entry("logs", &span.logs)?;
 
-        let logs = span
-            .logs
-            .iter()
-            .map(|log| LogWrapper(log))
-            .collect::<Vec<LogWrapper>>();
-        map.serialize_entry("logs", &logs)?;
-
-        // TODO: processID
-        map.serialize_entry("processID", &Null)?;
+        map.serialize_entry("processID", &self.process)?;
         map.serialize_entry("warnings", &Null)?;
         map.serialize_entry("flags", &1)?;
 
@@ -148,24 +140,46 @@ impl<'a> Serialize for TraceSpan<'a> {
     }
 }
 
-impl Serialize for Trace {
+impl Serialize for TraceExt {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let trace = &self.inner;
+
+        let mut map = serializer.serialize_map(Some(4))?;
+        map.serialize_entry("traceID", &trace.id.to_string())?;
+        map.serialize_entry(
+            "spans",
+            &trace
+                .spans
+                .iter()
+                .map(|span| SpanExt {
+                    trace_id: trace.id,
+                    inner: span,
+                    process: String::from("p1"),
+                })
+                .collect::<Vec<_>>(),
+        )?;
+        map.serialize_entry("processes", &self.processes)?;
+        map.serialize_entry("warnings", &Null)?;
+        map.end()
+    }
+}
+
+impl Serialize for Process {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         let mut map = serializer.serialize_map(Some(4))?;
-        map.serialize_entry("traceID", &self.id.to_string())?;
-        map.serialize_entry(
-            "spans",
-            &self
-                .spans
-                .iter()
-                .map(|span| TraceSpan(self.id, span))
-                .collect::<Vec<_>>(),
-        )?;
-        // TODO: processes
-        map.serialize_entry("processes", &Null)?;
-        map.serialize_entry("warnings", &Null)?;
+        map.serialize_entry("serviceName", &self.name)?;
+        let tags: Vec<_> = self
+            .tags
+            .iter()
+            .map(|(key, value)| KvFields(key, value))
+            .collect();
+        map.serialize_entry("tags", &tags)?;
         map.end()
     }
 }

@@ -11,8 +11,6 @@ use crate::{Log, Trace};
 
 #[derive(Debug, Default)]
 pub struct Aggregator {
-    // <trace_id, process_id>
-    process_map: HashMap<u64, u32>,
     // <span_id, Span>
     spans: HashMap<u64, proto::Span>,
     logs: Vec<proto::Log>,
@@ -28,7 +26,6 @@ pub struct AggregatedData {
 impl Aggregator {
     pub fn new() -> Self {
         Aggregator {
-            process_map: HashMap::default(),
             spans: HashMap::default(),
             logs: Vec::new(),
         }
@@ -49,8 +46,6 @@ impl Aggregator {
                 target_span.end = span.end;
             }
             Entry::Vacant(entry) => {
-                // Correlate the trace id and process id.
-                self.process_map.insert(span.trace_id, span.process_id);
                 entry.insert(span);
             }
         }
@@ -67,7 +62,7 @@ impl Aggregator {
             let trace_id = span.trace_id;
             let (trace, is_intact) = traces.entry(trace_id).or_insert((
                 Trace {
-                    process_id: self.process_map.get(&trace_id).copied().unwrap_or_default(),
+                    process_id: span.process_id,
                     id: NonZeroU64::new(trace_id).expect("trace id cannot be 0"),
                     duration: 0,
                     time: SystemTime::now(),

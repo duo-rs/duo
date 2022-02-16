@@ -92,6 +92,7 @@ where
                 start: Some(SystemTime::now().into()),
                 end: None,
                 tags,
+                // Set a temporary process id, we'll set a real value in send stage.
                 process_id: 0,
             };
             attrs.record(&mut SpanAttributeVisitor(&mut span));

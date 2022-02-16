@@ -47,6 +47,13 @@ pub struct Log {
     pub fields: HashMap<String, proto::Value>,
 }
 
+#[derive(Debug)]
+pub struct TraceExt {
+    pub inner: Trace,
+    pub processes: HashMap<String, Process>,
+}
+
+
 impl Hash for Span {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.id.hash(state);

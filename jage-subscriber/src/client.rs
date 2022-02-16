@@ -38,12 +38,10 @@ impl JageClient {
         self.process_id = response.into_inner().process_id;
     }
 
-    pub async fn record_span(&mut self, span: proto::Span) {
+    pub async fn record_span(&mut self, mut span: proto::Span) {
+        span.process_id = self.process_id;
         self.inner
-            .record_span(Request::new(RecordSpanRequest {
-                process_id: self.process_id,
-                span: Some(span),
-            }))
+            .record_span(Request::new(RecordSpanRequest { span: Some(span) }))
             .await
             .unwrap();
     }
