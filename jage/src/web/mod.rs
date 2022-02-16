@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, vec};
 
 use axum::{
     http::StatusCode,
@@ -33,11 +33,11 @@ pub async fn run_web_server(bundle: Arc<RwLock<TraceBundle>>) {
                 )
             }),
         )
-        .route("/traces", get(routes::traces))
-        .route("/services", get(|| async { "Hello, World!" }))
+        .route("/api/traces", get(routes::traces))
+        .route("/api/services", get(routes::services))
         .route(
-            "/services/:service/operations",
-            get(|| async { "Hello, World!" }),
+            "/api/services/:service/operations",
+            get(|| async { vec![] }),
         )
         .layer(layer);
 

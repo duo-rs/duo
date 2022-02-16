@@ -13,3 +13,8 @@ pub async fn traces(Extension(bundle): Extension<Arc<RwLock<TraceBundle>>>) -> i
     let bundle = bundle.read();
     Json(JaegerData(bundle.transform_traces(1)))
 }
+
+pub async fn services(Extension(bundle): Extension<Arc<RwLock<TraceBundle>>>) -> impl IntoResponse {
+    let bundle = bundle.read();
+    Json(JaegerData(bundle.services()))
+}

@@ -6,7 +6,7 @@ use jage_api as proto;
 #[derive(Default)]
 pub struct TraceBundle {
     // Collection of process.
-    prcoesses: Vec<Process>,
+    processes: Vec<Process>,
     // <trace_id, Trace>
     traces: HashMap<NonZeroU64, Trace>,
     logs: Vec<Log>,
@@ -17,7 +17,7 @@ pub struct TraceBundle {
 impl std::fmt::Debug for TraceBundle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("TraceBundle")
-            .field("prcoesses", &self.prcoesses)
+            .field("prcoesses", &self.processes)
             .field("traces", &self.traces.len())
             .field("logs", &self.logs.len())
             .field("span_log_map", &self.span_log_map.len())
@@ -30,8 +30,16 @@ impl TraceBundle {
         TraceBundle::default()
     }
 
+    pub(crate) fn services(&self) -> Vec<String> {
+        self.processes
+            .iter()
+            .map(|process| &process.name)
+            .cloned()
+            .collect()
+    }
+
     fn processes(&self) -> HashMap<String, Process> {
-        self.prcoesses
+        self.processes
             .iter()
             .cloned()
             .enumerate()
@@ -73,8 +81,8 @@ impl TraceBundle {
     /// Register new process and return the process id.
     pub(crate) fn register_process(&mut self, process: proto::Process) -> u32 {
         // TODO: generate new process id
-        let process_id = self.prcoesses.len() as u32 + 1;
-        self.prcoesses.push(Process {
+        let process_id = self.processes.len() as u32 + 1;
+        self.processes.push(Process {
             id: process_id,
             name: process.name,
             tags: process.tags,
