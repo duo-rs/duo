@@ -1,4 +1,7 @@
-use std::{collections::HashMap, num::NonZeroU64};
+use std::{
+    collections::{HashMap, HashSet},
+    num::NonZeroU64,
+};
 
 use crate::{aggregator::AggregatedData, Log, Process, Trace, TraceExt};
 use jage_api as proto;
@@ -32,6 +35,21 @@ impl Warehouse {
 
     pub(crate) fn services(&self) -> Vec<String> {
         self.services.keys().cloned().collect()
+    }
+
+    pub(crate) fn span_names(&self, service: &str) -> HashSet<String> {
+        let process_prefix = format!("{}:", service);
+        self.traces
+            .values()
+            .filter(|trace| trace.process_id.starts_with(&process_prefix))
+            .flat_map(|trace| {
+                trace
+                    .spans
+                    .iter()
+                    .map(|span| span.name.clone())
+                    .collect::<HashSet<_>>()
+            })
+            .collect()
     }
 
     fn processes(&self) -> HashMap<String, Process> {

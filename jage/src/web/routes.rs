@@ -29,3 +29,11 @@ pub async fn services(
     let bundle = warehouse.read();
     Json(JaegerData(bundle.services()))
 }
+
+pub(crate) async fn operations(
+    Path(service): Path<String>,
+    Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
+) -> impl IntoResponse {
+    let bundle = warehouse.read();
+    Json(JaegerData(bundle.span_names(&service)))
+}

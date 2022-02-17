@@ -1,4 +1,4 @@
-use std::{sync::Arc, vec};
+use std::sync::Arc;
 
 use axum::{
     http::StatusCode,
@@ -35,10 +35,7 @@ pub async fn run_web_server(bundle: Arc<RwLock<Warehouse>>) {
         )
         .route("/api/traces", get(routes::traces))
         .route("/api/services", get(routes::services))
-        .route(
-            "/api/services/:service/operations",
-            get(|| async { vec![] }),
-        )
+        .route("/api/services/:service/operations", get(routes::operations))
         .layer(layer);
 
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
