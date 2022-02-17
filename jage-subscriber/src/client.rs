@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use jage_api as proto;
 use proto::instrument::{
     instrument_client::InstrumentClient, RecordEventRequest, RecordSpanRequest,
@@ -30,7 +28,7 @@ impl JageClient {
             .register_process(Request::new(RegisterProcessRequest {
                 process: Some(Process {
                     name: String::from(self.name),
-                    tags: HashMap::default(),
+                    tags: super::grasp_process_info(),
                 }),
             }))
             .await
