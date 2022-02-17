@@ -81,7 +81,7 @@ where
                         .map(|s| (Some(s.id), s.trace_id))
                 })
                 // If parent's trace_id not exists, use the newly generated one.
-                .unwrap_or_else(|| (None, rand_id));
+                .unwrap_or((None, rand_id));
 
             let metadata = attrs.metadata();
             let mut tags = HashMap::with_capacity(3 + metadata.fields().len());
