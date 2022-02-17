@@ -31,7 +31,7 @@ message RecordEventRequest {
 }
 
 message RegisterProcessResponse {
-    uint32 process_id = 1;
+    string process_id = 1;
 }
 
 message RecordSpanResponse {}

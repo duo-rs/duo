@@ -8,7 +8,7 @@ use tonic::{transport::Channel, Request};
 
 pub struct JageClient {
     name: &'static str,
-    process_id: u32,
+    process_id: String,
     inner: InstrumentClient<Channel>,
 }
 
@@ -17,7 +17,7 @@ impl JageClient {
     pub fn new(name: &'static str, client: InstrumentClient<Channel>) -> JageClient {
         JageClient {
             name,
-            process_id: 0,
+            process_id: String::new(),
             inner: client,
         }
     }
@@ -37,7 +37,7 @@ impl JageClient {
     }
 
     pub async fn record_span(&mut self, mut span: proto::Span) {
-        span.process_id = self.process_id;
+        span.process_id = self.process_id.clone();
         self.inner
             .record_span(Request::new(RecordSpanRequest { span: Some(span) }))
             .await

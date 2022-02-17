@@ -9,7 +9,7 @@ message Span {
     // Span id
     uint64 id = 1;
     // The prcess id
-    uint32 process_id = 2;
+    string process_id = 2;
     // Trace id
     uint64 trace_id = 3;
     // Parent span id

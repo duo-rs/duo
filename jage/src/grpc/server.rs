@@ -27,7 +27,7 @@ enum Message {
 
 #[derive(Debug)]
 struct RegisterMessage {
-    tx: Sender<u32>,
+    tx: Sender<String>,
     process: proto::Process,
 }
 

@@ -97,7 +97,7 @@ where
                 end: None,
                 tags,
                 // Set a temporary process id, we'll set a real value in send stage.
-                process_id: 0,
+                process_id: String::new(),
             };
             attrs.record(&mut SpanAttributeVisitor(&mut span));
             self.send_message(Message::NewSpan(span.clone()));

@@ -9,7 +9,7 @@ use tracing::Level;
 
 #[derive(Debug, Clone)]
 pub struct Process {
-    pub id: u32,
+    pub id: String,
     pub service_name: String,
     pub tags: HashMap<String, proto::Value>,
 }
@@ -20,7 +20,7 @@ pub struct Trace {
     pub duration: i64,
     pub time: SystemTime,
     pub spans: HashSet<Span>,
-    pub process_id: u32,
+    pub process_id: String,
 }
 
 #[derive(Debug, Clone)]
@@ -32,7 +32,7 @@ pub struct Span {
     pub end: Option<SystemTime>,
     pub tags: HashMap<String, proto::Value>,
     pub logs: Vec<Log>,
-    pub process_id: u32,
+    pub process_id: String,
 }
 
 #[derive(Debug, Clone)]
@@ -106,7 +106,7 @@ impl Trace {
                 .or_else(|| Some(SystemTime::now())),
             tags: span.tags.clone(),
             logs: Vec::new(),
-            process_id: self.process_id,
+            process_id: self.process_id.clone(),
         };
         self.duration = self.duration.max(target.duration());
         self.time = self.time.min(target.start);

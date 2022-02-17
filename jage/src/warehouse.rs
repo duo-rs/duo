@@ -36,24 +36,24 @@ impl Warehouse {
 
     fn processes(&self) -> HashMap<String, Process> {
         self.services
-            .values()
-            .enumerate()
-            .flat_map(|(i, processes)| {
+            .iter()
+            .flat_map(|(service_name, processes)| {
                 processes
                     .iter()
                     .cloned()
                     .enumerate()
-                    .map(|(j, process)| (format!("p{}-{}", i, j), process))
+                    .map(|(i, process)| (format!("{}:{}", &service_name, i), process))
                     .collect::<Vec<_>>()
             })
             .collect()
     }
 
-    pub(crate) fn transform_traces(&self, process_id: u32) -> Vec<TraceExt> {
+    pub(crate) fn transform_traces(&self, service: &str) -> Vec<TraceExt> {
+        let process_prefix = format!("{}:", service);
         let processes = self.processes();
         self.traces
             .values()
-            .filter(|trace| trace.process_id == process_id)
+            .filter(|trace| trace.process_id.starts_with(&process_prefix))
             .cloned()
             .map(|mut trace| {
                 trace.spans = trace
@@ -81,14 +81,14 @@ impl Warehouse {
     }
 
     /// Register new process and return the process id.
-    pub(crate) fn register_process(&mut self, process: proto::Process) -> u32 {
+    pub(crate) fn register_process(&mut self, process: proto::Process) -> String {
         let service_name = process.name;
         let service_processes = self.services.entry(service_name.clone()).or_default();
 
         // TODO: generate new process id
-        let process_id = service_processes.len() as u32 + 1;
+        let process_id = format!("{}:{}", &service_name, service_processes.len());
         service_processes.push(Process {
-            id: process_id,
+            id: process_id.clone(),
             service_name,
             tags: process.tags,
         });

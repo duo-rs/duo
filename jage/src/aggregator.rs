@@ -62,7 +62,7 @@ impl Aggregator {
             let trace_id = span.trace_id;
             let (trace, is_intact) = traces.entry(trace_id).or_insert((
                 Trace {
-                    process_id: span.process_id,
+                    process_id: span.process_id.clone(),
                     id: NonZeroU64::new(trace_id).expect("trace id cannot be 0"),
                     duration: 0,
                     time: SystemTime::now(),
