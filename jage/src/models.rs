@@ -10,7 +10,7 @@ use tracing::Level;
 #[derive(Debug, Clone)]
 pub struct Process {
     pub id: u32,
-    pub name: String,
+    pub service_name: String,
     pub tags: HashMap<String, proto::Value>,
 }
 

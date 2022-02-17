@@ -159,7 +159,7 @@ impl Serialize for TraceExt {
                 .map(|span| SpanExt {
                     trace_id: trace.id,
                     inner: span,
-                    process: String::from("p1"),
+                    process: String::from("p0-0"),
                 })
                 .collect::<Vec<_>>(),
         )?;
@@ -175,7 +175,7 @@ impl Serialize for Process {
         S: Serializer,
     {
         let mut map = serializer.serialize_map(Some(4))?;
-        map.serialize_entry("serviceName", &self.name)?;
+        map.serialize_entry("serviceName", &self.service_name)?;
         let tags: Vec<_> = self
             .tags
             .iter()

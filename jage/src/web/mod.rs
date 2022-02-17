@@ -10,14 +10,14 @@ use parking_lot::RwLock;
 use tower::ServiceBuilder;
 use tower_http::services::ServeDir;
 
-use crate::TraceBundle;
+use crate::Warehouse;
 
 mod routes;
 mod serialize;
 
 pub struct JaegerData<I: IntoIterator>(pub I);
 
-pub async fn run_web_server(bundle: Arc<RwLock<TraceBundle>>) {
+pub async fn run_web_server(bundle: Arc<RwLock<Warehouse>>) {
     let layer = ServiceBuilder::new().layer(AddExtensionLayer::new(bundle));
     let app = Router::new()
         .route(

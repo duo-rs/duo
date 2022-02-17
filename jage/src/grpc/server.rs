@@ -9,10 +9,10 @@ use proto::instrument::{
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tonic::{Request, Response, Status};
 
-use crate::{Aggregator, TraceBundle};
+use crate::{Aggregator, Warehouse};
 
 pub struct JageServer {
-    bundle: Arc<RwLock<TraceBundle>>,
+    bundle: Arc<RwLock<Warehouse>>,
     aggregator: Arc<RwLock<Aggregator>>,
     sender: Sender<Message>,
     receiver: Arc<RwLock<Receiver<Message>>>,
@@ -32,7 +32,7 @@ struct RegisterMessage {
 }
 
 impl JageServer {
-    pub fn new(bundle: Arc<RwLock<TraceBundle>>) -> Self {
+    pub fn new(bundle: Arc<RwLock<Warehouse>>) -> Self {
         let (sender, receiver) = channel::<Message>(4096);
         Self {
             bundle,

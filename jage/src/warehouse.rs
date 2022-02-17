@@ -4,9 +4,9 @@ use crate::{aggregator::AggregatedData, Log, Process, Trace, TraceExt};
 use jage_api as proto;
 
 #[derive(Default)]
-pub struct TraceBundle {
-    // Collection of process.
-    processes: Vec<Process>,
+pub struct Warehouse {
+    // Collection of services.
+    services: HashMap<String, Vec<Process>>,
     // <trace_id, Trace>
     traces: HashMap<NonZeroU64, Trace>,
     logs: Vec<Log>,
@@ -14,10 +14,10 @@ pub struct TraceBundle {
     span_log_map: HashMap<NonZeroU64, Vec<usize>>,
 }
 
-impl std::fmt::Debug for TraceBundle {
+impl std::fmt::Debug for Warehouse {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("TraceBundle")
-            .field("prcoesses", &self.processes)
+        f.debug_struct("Warehouse")
+            .field("services", &self.services)
             .field("traces", &self.traces.len())
             .field("logs", &self.logs.len())
             .field("span_log_map", &self.span_log_map.len())
@@ -25,25 +25,27 @@ impl std::fmt::Debug for TraceBundle {
     }
 }
 
-impl TraceBundle {
+impl Warehouse {
     pub fn new() -> Self {
-        TraceBundle::default()
+        Warehouse::default()
     }
 
     pub(crate) fn services(&self) -> Vec<String> {
-        self.processes
-            .iter()
-            .map(|process| &process.name)
-            .cloned()
-            .collect()
+        self.services.keys().cloned().collect()
     }
 
     fn processes(&self) -> HashMap<String, Process> {
-        self.processes
-            .iter()
-            .cloned()
+        self.services
+            .values()
             .enumerate()
-            .map(|(i, process)| (format!("p{}", i + 1), process))
+            .flat_map(|(i, processes)| {
+                processes
+                    .iter()
+                    .cloned()
+                    .enumerate()
+                    .map(|(j, process)| (format!("p{}-{}", i, j), process))
+                    .collect::<Vec<_>>()
+            })
             .collect()
     }
 
@@ -80,11 +82,14 @@ impl TraceBundle {
 
     /// Register new process and return the process id.
     pub(crate) fn register_process(&mut self, process: proto::Process) -> u32 {
+        let service_name = process.name;
+        let service_processes = self.services.entry(service_name.clone()).or_default();
+
         // TODO: generate new process id
-        let process_id = self.processes.len() as u32 + 1;
-        self.processes.push(Process {
+        let process_id = service_processes.len() as u32 + 1;
+        service_processes.push(Process {
             id: process_id,
-            name: process.name,
+            service_name,
             tags: process.tags,
         });
         process_id

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::TraceBundle;
+use crate::Warehouse;
 
 use self::server::JageServer;
 
@@ -11,7 +11,7 @@ use tonic::transport::Server;
 
 mod server;
 
-pub fn spawn_server(bundle: Arc<RwLock<TraceBundle>>) {
+pub fn spawn_server(bundle: Arc<RwLock<Warehouse>>) {
     tokio::spawn(async {
         let addr = "127.0.0.1:6000".parse().unwrap();
         let mut service = JageServer::new(bundle);
