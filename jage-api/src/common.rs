@@ -61,6 +61,6 @@ impl From<String> for Value {
 
 impl From<&dyn std::fmt::Debug> for Value {
     fn from(val: &dyn std::fmt::Debug) -> Self {
-        value::Inner::DebugVal(format!("{:?}", val)).into()
+        value::Inner::StrVal(format!("{:?}", val)).into()
     }
 }

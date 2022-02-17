@@ -43,7 +43,7 @@ impl<'a> Serialize for KvFields<'a> {
         map.serialize_entry("key", &self.0)?;
         if let Some(value) = self.1.inner.as_ref() {
             match value {
-                proto::ValueEnum::DebugVal(v) | proto::ValueEnum::StrVal(v) => {
+                proto::ValueEnum::StrVal(v) => {
                     map.serialize_entry("type", "string")?;
                     map.serialize_entry("value", &v)?
                 }

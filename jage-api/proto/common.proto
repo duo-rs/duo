@@ -27,15 +27,13 @@ enum Level {
 // The value of the key-value pair.
 message Value {
     oneof inner {
-        // A value serialized to a string using `fmt::Debug`.
-        string debug_val = 2;
         // A string value.
-        string str_val = 3;
+        string str_val = 2;
         // An unsigned integer value.
-        uint64 u64_val = 4;
+        uint64 u64_val = 3;
         // A signed integer value.
-        sint64 i64_val = 5;
+        sint64 i64_val = 4;
         // A boolean value.
-        bool bool_val = 6;
+        bool bool_val = 5;
     }
 }
