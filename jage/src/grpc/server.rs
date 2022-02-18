@@ -12,7 +12,7 @@ use tonic::{Request, Response, Status};
 use crate::{Aggregator, Warehouse};
 
 pub struct JageServer {
-    bundle: Arc<RwLock<Warehouse>>,
+    warehouse: Arc<RwLock<Warehouse>>,
     aggregator: Arc<RwLock<Aggregator>>,
     sender: Sender<Message>,
     receiver: Arc<RwLock<Receiver<Message>>>,
@@ -32,10 +32,10 @@ struct RegisterMessage {
 }
 
 impl JageServer {
-    pub fn new(bundle: Arc<RwLock<Warehouse>>) -> Self {
+    pub fn new(warehouse: Arc<RwLock<Warehouse>>) -> Self {
         let (sender, receiver) = channel::<Message>(4096);
         Self {
-            bundle,
+            warehouse,
             aggregator: Arc::new(RwLock::new(Aggregator::new())),
             sender,
             receiver: Arc::new(RwLock::new(receiver)),
@@ -43,7 +43,7 @@ impl JageServer {
     }
 
     pub fn bootstrap(&mut self) {
-        let bundle = Arc::clone(&self.bundle);
+        let warehouse = Arc::clone(&self.warehouse);
         let receiver = Arc::clone(&self.receiver);
         let aggregator = Arc::clone(&self.aggregator);
         tokio::spawn(async move {
@@ -51,7 +51,7 @@ impl JageServer {
                 let mut receiver = receiver.write();
                 match receiver.recv().await {
                     Some(Message::Register(RegisterMessage { tx, process })) => {
-                        let process_id = bundle.write().register_process(process);
+                        let process_id = warehouse.write().register_process(process);
                         tx.send(process_id).await.unwrap();
                     }
                     Some(Message::Span(span)) => {
@@ -66,15 +66,15 @@ impl JageServer {
         });
 
         let aggregator = Arc::clone(&self.aggregator);
-        let bundle = Arc::clone(&self.bundle);
+        let warehouse = Arc::clone(&self.warehouse);
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(1));
             loop {
                 interval.tick().await;
                 let data = aggregator.write().aggregate();
-                let mut bundle = bundle.write();
-                bundle.merge_data(data);
-                println!("After merge: {:?}", bundle);
+                let mut warehouse = warehouse.write();
+                warehouse.merge_data(data);
+                println!("After merge: {:?}", warehouse);
             }
         });
     }

@@ -17,8 +17,8 @@ mod serialize;
 
 pub struct JaegerData<I: IntoIterator>(pub I);
 
-pub async fn run_web_server(bundle: Arc<RwLock<Warehouse>>) {
-    let layer = ServiceBuilder::new().layer(AddExtensionLayer::new(bundle));
+pub async fn run_web_server(warehouse: Arc<RwLock<Warehouse>>) {
+    let layer = ServiceBuilder::new().layer(AddExtensionLayer::new(warehouse));
     let app = Router::new()
         .route(
             "/",

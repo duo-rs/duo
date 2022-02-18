@@ -11,10 +11,10 @@ use tonic::transport::Server;
 
 mod server;
 
-pub fn spawn_server(bundle: Arc<RwLock<Warehouse>>) {
+pub fn spawn_server(warehouse: Arc<RwLock<Warehouse>>) {
     tokio::spawn(async {
         let addr = "127.0.0.1:6000".parse().unwrap();
-        let mut service = JageServer::new(bundle);
+        let mut service = JageServer::new(warehouse);
         service.bootstrap();
         Server::builder()
             .add_service(InstrumentServer::new(service))

@@ -19,21 +19,21 @@ pub async fn traces(
     Query(query): Query<TraceQuery>,
     Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
 ) -> impl IntoResponse {
-    let bundle = warehouse.read();
-    Json(JaegerData(bundle.transform_traces(&query.service)))
+    let warehouse = warehouse.read();
+    Json(JaegerData(warehouse.transform_traces(&query.service)))
 }
 
 pub async fn services(
     Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
 ) -> impl IntoResponse {
-    let bundle = warehouse.read();
-    Json(JaegerData(bundle.services()))
+    let warehouse = warehouse.read();
+    Json(JaegerData(warehouse.services()))
 }
 
 pub(crate) async fn operations(
     Path(service): Path<String>,
     Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
 ) -> impl IntoResponse {
-    let bundle = warehouse.read();
-    Json(JaegerData(bundle.span_names(&service)))
+    let warehouse = warehouse.read();
+    Json(JaegerData(warehouse.span_names(&service)))
 }
