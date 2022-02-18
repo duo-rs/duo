@@ -8,6 +8,7 @@ use proto::instrument::{
 };
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tonic::{Request, Response, Status};
+use tracing::{debug, info};
 
 use crate::{Aggregator, Warehouse};
 
@@ -74,7 +75,7 @@ impl JageServer {
                 let data = aggregator.write().aggregate();
                 let mut warehouse = warehouse.write();
                 warehouse.merge_data(data);
-                println!("After merge: {:?}", warehouse);
+                debug!("After merge: {:?}", warehouse);
             }
         });
     }
@@ -86,7 +87,7 @@ impl Instrument for JageServer {
         &self,
         request: Request<RegisterProcessRequest>,
     ) -> Result<Response<RegisterProcessResponse>, Status> {
-        println!("register process: {:?}", request);
+        info!("register process: {:?}", request);
         let process = request
             .into_inner()
             .process
@@ -109,7 +110,7 @@ impl Instrument for JageServer {
         &self,
         request: Request<RecordSpanRequest>,
     ) -> Result<Response<RecordSpanResponse>, Status> {
-        println!("record span: {:?}", request);
+        debug!("record span: {:?}", request);
         let span = request
             .into_inner()
             .span
@@ -125,7 +126,7 @@ impl Instrument for JageServer {
         &self,
         request: Request<RecordEventRequest>,
     ) -> Result<Response<RecordEventResponse>, Status> {
-        println!("record event, {:?}", request);
+        debug!("record event, {:?}", request);
 
         let log = request
             .into_inner()
