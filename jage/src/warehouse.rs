@@ -1,9 +1,6 @@
-use std::{
-    collections::{HashMap, HashSet},
-    num::NonZeroU64,
-};
+use std::{collections::HashMap, num::NonZeroU64};
 
-use crate::{aggregator::AggregatedData, Log, Process, Trace, TraceExt};
+use crate::{aggregator::AggregatedData, Log, Process, Trace};
 use jage_api as proto;
 
 #[derive(Default)]
@@ -33,69 +30,20 @@ impl Warehouse {
         Warehouse::default()
     }
 
-    pub(crate) fn services(&self) -> Vec<String> {
-        self.services.keys().cloned().collect()
+    pub(crate) fn services(&self) -> &HashMap<String, Vec<Process>> {
+        &self.services
     }
 
-    pub(crate) fn span_names(&self, service: &str) -> HashSet<String> {
-        let process_prefix = format!("{}:", service);
-        self.traces
-            .values()
-            .filter(|trace| trace.process_id.starts_with(&process_prefix))
-            .flat_map(|trace| {
-                trace
-                    .spans
-                    .iter()
-                    .map(|span| span.name.clone())
-                    .collect::<HashSet<_>>()
-            })
-            .collect()
+    pub(crate) fn traces(&self) -> &HashMap<NonZeroU64, Trace> {
+        &self.traces
     }
 
-    fn processes(&self) -> HashMap<String, Process> {
-        self.services
-            .iter()
-            .flat_map(|(service_name, processes)| {
-                processes
-                    .iter()
-                    .cloned()
-                    .enumerate()
-                    .map(|(i, process)| (format!("{}:{}", &service_name, i), process))
-                    .collect::<Vec<_>>()
-            })
-            .collect()
+    pub(crate) fn logs(&self) -> &Vec<Log> {
+        &self.logs
     }
 
-    pub(crate) fn transform_traces(&self, service: &str) -> Vec<TraceExt> {
-        let process_prefix = format!("{}:", service);
-        let processes = self.processes();
-        self.traces
-            .values()
-            .filter(|trace| trace.process_id.starts_with(&process_prefix))
-            .cloned()
-            .map(|mut trace| {
-                trace.spans = trace
-                    .spans
-                    .into_iter()
-                    .filter_map(|mut span| {
-                        if let Some(idxs) = self.span_log_map.get(&span.id) {
-                            span.logs = idxs
-                                .iter()
-                                .filter_map(|idx| self.logs.get(*idx))
-                                .cloned()
-                                .collect();
-                            Some(span)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-                TraceExt {
-                    inner: trace,
-                    processes: processes.clone(),
-                }
-            })
-            .collect()
+    pub(crate) fn span_log_map(&self) -> &HashMap<NonZeroU64, Vec<usize>> {
+        &self.span_log_map
     }
 
     /// Register new process and return the process id.

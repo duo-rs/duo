@@ -8,26 +8,30 @@ use serde::Deserialize;
 
 use crate::Warehouse;
 
+use super::query::TraceQuery;
 use super::JaegerData;
 
 #[derive(Debug, Deserialize)]
-pub struct TraceQuery {
-    service: String,
+pub struct QueryParameters {
+    pub service: String,
+    pub operation: Option<String>,
 }
 
 pub async fn traces(
-    Query(query): Query<TraceQuery>,
+    Query(parameters): Query<QueryParameters>,
     Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
 ) -> impl IntoResponse {
     let warehouse = warehouse.read();
-    Json(JaegerData(warehouse.transform_traces(&query.service)))
+    Json(JaegerData(
+        TraceQuery::new(&warehouse).filter_traces(parameters),
+    ))
 }
 
 pub async fn services(
     Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
 ) -> impl IntoResponse {
     let warehouse = warehouse.read();
-    Json(JaegerData(warehouse.services()))
+    Json(JaegerData(TraceQuery::new(&warehouse).service_names()))
 }
 
 pub(crate) async fn operations(
@@ -35,5 +39,5 @@ pub(crate) async fn operations(
     Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
 ) -> impl IntoResponse {
     let warehouse = warehouse.read();
-    Json(JaegerData(warehouse.span_names(&service)))
+    Json(JaegerData(TraceQuery::new(&warehouse).span_names(&service)))
 }
