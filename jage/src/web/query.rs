@@ -4,6 +4,8 @@ use crate::{Process, TraceExt, Warehouse};
 
 use super::routes::QueryParameters;
 
+const DEFAUT_TRACE_LIMIT: usize = 20;
+
 pub(super) struct TraceQuery<'a>(&'a Warehouse);
 
 impl<'a> TraceQuery<'a> {
@@ -18,9 +20,23 @@ impl<'a> TraceQuery<'a> {
 
         let processes = self.processes();
         let process_prefix = format!("{}:", p.service);
+        let limit = p.limit.unwrap_or(DEFAUT_TRACE_LIMIT);
         traces
             .values()
-            .filter(|trace| trace.process_id.starts_with(&process_prefix))
+            .filter(|trace| {
+                if !trace.process_id.starts_with(&process_prefix) {
+                    return false;
+                }
+
+                if let Some(span_name) = p.operation.as_ref() {
+                    if !trace.spans.iter().any(|span| &*span.name == span_name) {
+                        return false;
+                    }
+                }
+
+                true
+            })
+            .take(limit)
             .cloned()
             .map(|mut trace| {
                 trace.spans = trace
