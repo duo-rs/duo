@@ -7,7 +7,10 @@ use crate::{
 };
 use rand::rngs::ThreadRng;
 use rand::Rng;
-use tokio::sync::mpsc::{self, error::TrySendError, Sender};
+use tokio::{
+    sync::mpsc::{self, error::TrySendError, Sender},
+    task::JoinHandle,
+};
 use tonic::transport::Uri;
 use tracing::{
     span::{self, Attributes},
@@ -28,9 +31,14 @@ enum Message {
 
 impl JageLayer {
     pub async fn new(name: &'static str, uri: Uri) -> Self {
+        let (layer, _) = Self::with_handle(name, uri).await;
+        layer
+    }
+
+    pub async fn with_handle(name: &'static str, uri: Uri) -> (Self, JoinHandle<()>) {
         let (sender, mut receiver) = mpsc::channel(2048);
         let mut client = Connection::connect(name, uri).await;
-        tokio::spawn(async move {
+        let handler = tokio::spawn(async move {
             while let Some(message) = receiver.recv().await {
                 match message {
                     Message::NewSpan(span) | Message::CloseSpan(span) => {
@@ -42,7 +50,7 @@ impl JageLayer {
                 }
             }
         });
-        JageLayer { sender }
+        (JageLayer { sender }, handler)
     }
 
     #[inline]

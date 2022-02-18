@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use jage_subscriber::JageLayer;
 use tonic::transport::Uri;
 use tracing::{debug, Level};
@@ -29,7 +27,7 @@ fn baz() {
 async fn main() {
     let fmt_layer = fmt::layer();
     let uri = Uri::from_static("http://127.0.0.1:6000");
-    let jage_layer = JageLayer::new("example", uri).await;
+    let (jage_layer, handle) = JageLayer::with_handle("example", uri).await;
     tracing_subscriber::registry()
         .with(fmt_layer)
         .with(jage_layer)
@@ -42,5 +40,6 @@ async fn main() {
 
     tracing::debug!("Bootstrap...");
     foo();
-    tokio::time::sleep(Duration::from_secs(3)).await;
+
+    handle.await.unwrap();
 }
