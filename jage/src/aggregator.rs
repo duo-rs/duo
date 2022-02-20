@@ -65,7 +65,6 @@ impl Aggregator {
                     process_id: span.process_id.clone(),
                     id: NonZeroU64::new(trace_id).expect("trace id cannot be 0"),
                     duration: 0,
-                    // FIXME: trace's time should be the first span's time
                     time: OffsetDateTime::now_utc(),
                     spans: HashSet::new(),
                 },
@@ -74,6 +73,9 @@ impl Aggregator {
                 true,
             ));
             let target_span = trace.convert_span(span);
+            // Determine the trace time.
+            // Trace's time should be the first span's time (with ealiest time in the trace).
+            trace.time = trace.time.min(target_span.start);
 
             if span.end.is_none() {
                 *is_intact = false;
