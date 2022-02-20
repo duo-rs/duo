@@ -5,6 +5,7 @@ use std::{
     num::NonZeroU64,
     time::SystemTime,
 };
+use time::OffsetDateTime;
 use tracing::Level;
 
 #[derive(Debug, Clone)]
@@ -18,7 +19,7 @@ pub struct Process {
 pub struct Trace {
     pub id: NonZeroU64,
     pub duration: i64,
-    pub time: SystemTime,
+    pub time: OffsetDateTime,
     pub spans: HashSet<Span>,
     pub process_id: String,
 }
@@ -28,8 +29,8 @@ pub struct Span {
     pub id: NonZeroU64,
     pub parent_id: Option<NonZeroU64>,
     pub name: String,
-    pub start: SystemTime,
-    pub end: Option<SystemTime>,
+    pub start: OffsetDateTime,
+    pub end: Option<OffsetDateTime>,
     pub tags: HashMap<String, proto::Value>,
     pub logs: Vec<Log>,
     pub process_id: String,
@@ -43,7 +44,7 @@ pub struct Log {
     /// They have no span id if the log emitted out of tracing context.
     pub span_id: Option<NonZeroU64>,
     pub level: Level,
-    pub time: SystemTime,
+    pub time: OffsetDateTime,
     pub fields: HashMap<String, proto::Value>,
 }
 
@@ -69,20 +70,13 @@ impl PartialEq for Span {
 impl Eq for Span {}
 
 impl Span {
-    pub fn as_micros(&self) -> u128 {
-        self.start
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .expect("SystemTime before UNIX EPOCH!")
-            .as_micros()
+    pub fn as_micros(&self) -> i64 {
+        (self.start.unix_timestamp_nanos() / 1000) as i64
     }
 
     pub fn duration(&self) -> i64 {
         self.end
-            .map(|end| {
-                end.duration_since(self.start)
-                    .expect("Span start time is earlier than the end time")
-                    .as_micros() as i64
-            })
+            .map(|end| (end - self.start).whole_microseconds() as i64)
             .unwrap_or_default()
     }
 
@@ -94,11 +88,8 @@ impl Span {
 }
 
 impl Trace {
-    pub fn as_micros(&self) -> u128 {
-        self.time
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .expect("SystemTime before UNIX EPOCH!")
-            .as_micros()
+    pub fn as_micros(&self) -> i64 {
+        (self.time.unix_timestamp_nanos() / 1000) as i64
     }
 
     pub fn convert_span(&mut self, span: &proto::Span) -> Span {
@@ -109,15 +100,23 @@ impl Trace {
             start: span
                 .start
                 .clone()
-                .map(|timestamp| timestamp.try_into().ok())
+                .map(|timestamp| {
+                    SystemTime::try_from(timestamp)
+                        .ok()
+                        .map(OffsetDateTime::from)
+                })
                 .flatten()
-                .unwrap_or_else(SystemTime::now),
+                .unwrap_or_else(OffsetDateTime::now_utc),
             end: span
                 .end
                 .clone()
-                .map(|timestamp| timestamp.try_into().ok())
+                .map(|timestamp| {
+                    SystemTime::try_from(timestamp)
+                        .ok()
+                        .map(OffsetDateTime::from)
+                })
                 .flatten()
-                .or_else(|| Some(SystemTime::now())),
+                .or_else(|| Some(OffsetDateTime::now_utc())),
             tags: span.tags.clone(),
             logs: Vec::new(),
             process_id: self.process_id.clone(),
@@ -130,11 +129,8 @@ impl Trace {
 }
 
 impl Log {
-    pub fn as_micros(&self) -> u128 {
-        self.time
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .expect("SystemTime before UNIX EPOCH!")
-            .as_micros()
+    pub fn as_micros(&self) -> i64 {
+        (self.time.unix_timestamp_nanos() / 1000) as i64
     }
 }
 
@@ -148,9 +144,13 @@ impl From<proto::Log> for Log {
                 .unwrap_or(tracing::Level::DEBUG),
             time: log
                 .time
-                .map(|timestamp| timestamp.try_into().ok())
+                .map(|timestamp| {
+                    SystemTime::try_from(timestamp)
+                        .ok()
+                        .map(OffsetDateTime::from)
+                })
                 .flatten()
-                .unwrap_or_else(SystemTime::now),
+                .unwrap_or_else(OffsetDateTime::now_utc),
             fields: log.fields,
         }
     }

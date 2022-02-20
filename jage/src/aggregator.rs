@@ -1,10 +1,10 @@
 use jage_api as proto;
+use time::OffsetDateTime;
 
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     mem,
     num::NonZeroU64,
-    time::SystemTime,
 };
 
 use crate::{Log, Trace};
@@ -65,7 +65,8 @@ impl Aggregator {
                     process_id: span.process_id.clone(),
                     id: NonZeroU64::new(trace_id).expect("trace id cannot be 0"),
                     duration: 0,
-                    time: SystemTime::now(),
+                    // FIXME: trace's time should be the first span's time
+                    time: OffsetDateTime::now_utc(),
                     spans: HashSet::new(),
                 },
                 // Whether the trace is intact.
