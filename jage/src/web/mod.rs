@@ -12,8 +12,9 @@ use tower_http::services::ServeDir;
 
 use crate::Warehouse;
 
-mod routes;
+mod deser;
 mod query;
+mod routes;
 mod serialize;
 
 pub struct JaegerData<I: IntoIterator>(pub I);

@@ -34,6 +34,15 @@ impl<'a> TraceQuery<'a> {
                     }
                 }
 
+                match (p.start, p.end) {
+                    (Some(start), None) if trace.time < start => return false,
+                    (None, Some(end)) if trace.time > end => return false,
+                    (Some(start), Some(end)) if trace.time < start || trace.time > end => {
+                        return false
+                    }
+                    _ => {}
+                }
+
                 true
             })
             .take(limit)
