@@ -1,4 +1,4 @@
-use std::{num::NonZeroU64, time::SystemTime};
+use std::num::NonZeroU64;
 
 use jage_api as proto;
 use serde::{ser::SerializeMap, Serialize, Serializer};
@@ -70,14 +70,7 @@ impl Serialize for Log {
         S: Serializer,
     {
         let mut map = serializer.serialize_map(Some(2))?;
-        map.serialize_entry(
-            "timestamp",
-            &(self
-                .time
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .expect("SystemTime before UNIX EPOCH!"))
-            .as_micros(),
-        )?;
+        map.serialize_entry("timestamp", &self.as_micros())?;
         let fields: Vec<_> = self
             .fields
             .iter()
@@ -115,14 +108,7 @@ impl<'a> Serialize for SpanExt<'a> {
             // The span isn't intact, add * to the operationName for indication.
             map.serialize_entry("operationName", &format!("{}*", span.name))?;
         }
-        map.serialize_entry(
-            "startTime",
-            &(span
-                .start
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .expect("SystemTime before UNIX EPOCH!"))
-            .as_micros(),
-        )?;
+        map.serialize_entry("startTime", &span.as_micros())?;
         map.serialize_entry("duration", &span.duration())?;
 
         let tags: Vec<_> = span

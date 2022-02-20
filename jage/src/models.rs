@@ -69,6 +69,13 @@ impl PartialEq for Span {
 impl Eq for Span {}
 
 impl Span {
+    pub fn as_micros(&self) -> u128 {
+        self.start
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("SystemTime before UNIX EPOCH!")
+            .as_micros()
+    }
+
     pub fn duration(&self) -> i64 {
         self.end
             .map(|end| {
@@ -87,7 +94,14 @@ impl Span {
 }
 
 impl Trace {
-    pub(crate) fn convert_span(&mut self, span: &proto::Span) -> Span {
+    pub fn as_micros(&self) -> u128 {
+        self.time
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("SystemTime before UNIX EPOCH!")
+            .as_micros()
+    }
+
+    pub fn convert_span(&mut self, span: &proto::Span) -> Span {
         let target = Span {
             id: NonZeroU64::new(span.id).expect("Span id cann not be 0"),
             parent_id: span.parent_id.map(NonZeroU64::new).flatten(),
@@ -112,6 +126,15 @@ impl Trace {
         self.time = self.time.min(target.start);
 
         target
+    }
+}
+
+impl Log {
+    pub fn as_micros(&self) -> u128 {
+        self.time
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("SystemTime before UNIX EPOCH!")
+            .as_micros()
     }
 }
 
