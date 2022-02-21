@@ -5,7 +5,7 @@ use axum::response::IntoResponse;
 use axum::Json;
 use parking_lot::RwLock;
 use serde::Deserialize;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 
 use crate::Warehouse;
 
@@ -23,6 +23,12 @@ pub struct QueryParameters {
     pub start: Option<OffsetDateTime>,
     #[serde(default, deserialize_with = "deser::option_miscrosecond")]
     pub end: Option<OffsetDateTime>,
+    #[serde(rename = "maxDuration")]
+    #[serde(default, deserialize_with = "deser::option_duration")]
+    pub max_duration: Option<Duration>,
+    #[serde(rename = "minDuration")]
+    #[serde(default, deserialize_with = "deser::option_duration")]
+    pub min_duration: Option<Duration>,
 }
 
 pub async fn traces(

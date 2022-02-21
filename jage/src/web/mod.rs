@@ -19,7 +19,7 @@ mod serialize;
 
 pub struct JaegerData<I: IntoIterator>(pub I);
 
-pub async fn run_web_server(warehouse: Arc<RwLock<Warehouse>>) {
+pub async fn run_web_server(warehouse: Arc<RwLock<Warehouse>>) -> anyhow::Result<()> {
     let layer = ServiceBuilder::new().layer(AddExtensionLayer::new(warehouse));
     let app = Router::new()
         .route(
@@ -40,8 +40,8 @@ pub async fn run_web_server(warehouse: Arc<RwLock<Warehouse>>) {
         .route("/api/services/:service/operations", get(routes::operations))
         .layer(layer);
 
-    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+    axum::Server::bind(&"0.0.0.0:3000".parse()?)
         .serve(app.into_make_service())
-        .await
-        .unwrap();
+        .await?;
+    Ok(())
 }

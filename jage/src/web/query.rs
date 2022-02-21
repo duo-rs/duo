@@ -43,6 +43,15 @@ impl<'a> TraceQuery<'a> {
                     _ => {}
                 }
 
+                match (p.min_duration, p.max_duration) {
+                    (Some(min), None) if trace.duration < min => return false,
+                    (None, Some(max)) if trace.duration > max => return false,
+                    (Some(min), Some(max)) if trace.duration < min || trace.duration > max => {
+                        return false
+                    }
+                    _ => {}
+                }
+
                 true
             })
             .take(limit)
