@@ -56,43 +56,36 @@ impl Aggregator {
         self.logs.push(log);
     }
 
+    /// Aggregate recorded data into [`AggregatedData`].
     pub fn aggregate(&mut self) -> AggregatedData {
         let mut traces = HashMap::new();
-        self.spans.values().for_each(|raw| {
-            let trace_id = raw.trace_id;
-            let (trace, is_intact) = traces.entry(trace_id).or_insert((
-                Trace {
-                    process_id: raw.process_id.clone(),
-                    id: NonZeroU64::new(trace_id).expect("trace id cannot be 0"),
+        self.spans.values().for_each(|span| {
+            let trace_id = NonZeroU64::new(span.trace_id).expect("trace id cannot be 0");
+            traces
+                .entry(trace_id)
+                .or_insert(Trace {
+                    process_id: span.process_id.clone(),
+                    id: trace_id,
                     duration: Duration::default(),
                     time: OffsetDateTime::now_utc(),
                     spans: HashSet::new(),
-                },
-                // Whether the trace is intact.
-                // Intact means all spans of this trace have both time values: start and end.
-                true,
-            ));
-
-            let span = trace.convert_span(raw);
-            *is_intact = span.end.is_some();
-
-            trace.spans.replace(span);
+                })
+                .merge_span(span);
         });
+
+        let intact_trace_ids = traces
+            .iter()
+            .filter_map(|(id, trace)| trace.is_intact().then(|| id.get()))
+            .collect::<Vec<_>>();
 
         // Remove all spans of intact traces.
-        traces.values().for_each(|(trace, is_intact)| {
-            if *is_intact {
-                self.spans.retain(|_, span| span.trace_id != trace.id.get());
-            }
-        });
+        self.spans
+            .retain(|_, span| intact_trace_ids.contains(&span.trace_id));
 
         let capacity = self.logs.capacity();
         let logs = mem::replace(&mut self.logs, Vec::with_capacity(capacity));
         AggregatedData {
-            traces: traces
-                .into_iter()
-                .map(|(_, (trace, _))| (trace.id, trace))
-                .collect(),
+            traces,
             logs: logs.into_iter().map(Log::from).collect(),
         }
     }

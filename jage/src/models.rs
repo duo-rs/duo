@@ -79,6 +79,7 @@ impl Span {
     }
 
     /// Whether the span is intact.
+    /// Intact means the span have both time values: start and end.
     #[inline]
     pub fn is_intact(&self) -> bool {
         self.end.is_some()
@@ -90,7 +91,13 @@ impl Trace {
         (self.time.unix_timestamp_nanos() / 1000) as i64
     }
 
-    pub fn convert_span(&mut self, raw: &proto::Span) -> Span {
+    /// Check the trace is intact or not.
+    /// The trace is intact only if all of spans inside the trace is intact.
+    pub fn is_intact(&self) -> bool {
+        self.spans.iter().all(|span| span.is_intact())
+    }
+
+    pub fn merge_span(&mut self, raw: &proto::Span) {
         let mut span = Span {
             id: NonZeroU64::new(raw.id).expect("Span id cann not be 0"),
             parent_id: raw.parent_id.map(NonZeroU64::new).flatten(),
@@ -136,7 +143,7 @@ impl Trace {
             }
         }
 
-        span
+        self.spans.replace(span);
     }
 }
 
