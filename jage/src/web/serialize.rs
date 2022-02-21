@@ -109,7 +109,7 @@ impl<'a> Serialize for SpanExt<'a> {
             map.serialize_entry("operationName", &format!("{}*", span.name))?;
         }
         map.serialize_entry("startTime", &span.as_micros())?;
-        map.serialize_entry("duration", &span.duration())?;
+        map.serialize_entry("duration", &span.duration().whole_microseconds())?;
 
         let tags: Vec<_> = span
             .tags

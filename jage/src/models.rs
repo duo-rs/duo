@@ -5,7 +5,7 @@ use std::{
     num::NonZeroU64,
     time::SystemTime,
 };
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use tracing::Level;
 
 #[derive(Debug, Clone)]
@@ -18,7 +18,7 @@ pub struct Process {
 #[derive(Debug, Clone)]
 pub struct Trace {
     pub id: NonZeroU64,
-    pub duration: i64,
+    pub duration: Duration,
     pub time: OffsetDateTime,
     pub spans: HashSet<Span>,
     pub process_id: String,
@@ -74,10 +74,8 @@ impl Span {
         (self.start.unix_timestamp_nanos() / 1000) as i64
     }
 
-    pub fn duration(&self) -> i64 {
-        self.end
-            .map(|end| (end - self.start).whole_microseconds() as i64)
-            .unwrap_or_default()
+    pub fn duration(&self) -> Duration {
+        self.end.map(|end| end - self.start).unwrap_or_default()
     }
 
     /// Whether the span is intact.
