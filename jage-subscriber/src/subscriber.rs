@@ -1,4 +1,7 @@
-use std::{collections::HashMap, time::SystemTime};
+use std::{
+    collections::HashMap,
+    time::{Instant, SystemTime},
+};
 
 use crate::{
     conn::Connection,
@@ -27,6 +30,22 @@ enum Message {
     NewSpan(proto::Span),
     CloseSpan(proto::Span),
     Event(proto::Log),
+}
+
+struct Timings {
+    idle: u32,
+    busy: u32,
+    last: Instant,
+}
+
+impl Timings {
+    fn new() -> Self {
+        Self {
+            idle: 0,
+            busy: 0,
+            last: Instant::now(),
+        }
+    }
 }
 
 impl JageLayer {
@@ -110,6 +129,7 @@ where
             attrs.record(&mut SpanAttributeVisitor(&mut span));
             self.send_message(Message::NewSpan(span.clone()));
             extension.insert(span);
+            extension.insert(Timings::new());
         }
     }
 
@@ -146,7 +166,16 @@ where
         self.send_message(Message::Event(log));
     }
 
-    fn on_enter(&self, _id: &span::Id, _ctx: Context<'_, S>) {}
+    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+        if let Some(span) = ctx.span(id) {
+            let mut extensions = span.extensions_mut();
+            if let Some(timings) = extensions.get_mut::<Timings>() {
+                let now = Instant::now();
+                timings.idle += now.saturating_duration_since(timings.last).as_micros() as u32;
+                timings.last = now;
+            }
+        }
+    }
 
     fn on_record(&self, id: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
         if let Some(span_ref) = ctx.span(id) {
@@ -168,13 +197,28 @@ where
         }
     }
 
-    fn on_exit(&self, _id: &span::Id, _ctx: Context<'_, S>) {}
+    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+        if let Some(span) = ctx.span(id) {
+            let mut extensions = span.extensions_mut();
+            if let Some(timings) = extensions.get_mut::<Timings>() {
+                let now = Instant::now();
+                timings.busy += now.saturating_duration_since(timings.last).as_micros() as u32;
+                timings.last = now;
+            }
+        }
+    }
 
     fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
         if let Some(span_ref) = ctx.span(&id) {
             let mut extensions = span_ref.extensions_mut();
             if let Some(mut span) = extensions.remove::<proto::Span>() {
                 span.end = Some(SystemTime::now().into());
+
+                if let Some(timings) = extensions.remove::<Timings>() {
+                    span.tags.insert("idle".into(), timings.idle.into());
+                    span.tags.insert("busy".into(), timings.busy.into());
+                }
+
                 self.send_message(Message::CloseSpan(span));
             }
         }

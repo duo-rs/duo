@@ -58,11 +58,11 @@ impl Aggregator {
 
     pub fn aggregate(&mut self) -> AggregatedData {
         let mut traces = HashMap::new();
-        self.spans.values().for_each(|span| {
-            let trace_id = span.trace_id;
+        self.spans.values().for_each(|raw| {
+            let trace_id = raw.trace_id;
             let (trace, is_intact) = traces.entry(trace_id).or_insert((
                 Trace {
-                    process_id: span.process_id.clone(),
+                    process_id: raw.process_id.clone(),
                     id: NonZeroU64::new(trace_id).expect("trace id cannot be 0"),
                     duration: Duration::default(),
                     time: OffsetDateTime::now_utc(),
@@ -72,16 +72,11 @@ impl Aggregator {
                 // Intact means all spans of this trace have both time values: start and end.
                 true,
             ));
-            let target_span = trace.convert_span(span);
-            // Determine the trace time.
-            // Trace's time should be the first span's time (with ealiest time in the trace).
-            trace.time = trace.time.min(target_span.start);
 
-            if span.end.is_none() {
-                *is_intact = false;
-            }
+            let span = trace.convert_span(raw);
+            *is_intact = span.end.is_some();
 
-            trace.spans.replace(target_span);
+            trace.spans.replace(span);
         });
 
         // Remove all spans of intact traces.

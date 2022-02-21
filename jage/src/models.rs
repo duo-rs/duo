@@ -90,12 +90,12 @@ impl Trace {
         (self.time.unix_timestamp_nanos() / 1000) as i64
     }
 
-    pub fn convert_span(&mut self, span: &proto::Span) -> Span {
-        let target = Span {
-            id: NonZeroU64::new(span.id).expect("Span id cann not be 0"),
-            parent_id: span.parent_id.map(NonZeroU64::new).flatten(),
-            name: span.name.clone(),
-            start: span
+    pub fn convert_span(&mut self, raw: &proto::Span) -> Span {
+        let mut span = Span {
+            id: NonZeroU64::new(raw.id).expect("Span id cann not be 0"),
+            parent_id: raw.parent_id.map(NonZeroU64::new).flatten(),
+            name: raw.name.clone(),
+            start: raw
                 .start
                 .clone()
                 .map(|timestamp| {
@@ -105,7 +105,7 @@ impl Trace {
                 })
                 .flatten()
                 .unwrap_or_else(OffsetDateTime::now_utc),
-            end: span
+            end: raw
                 .end
                 .clone()
                 .map(|timestamp| {
@@ -115,14 +115,28 @@ impl Trace {
                 })
                 .flatten()
                 .or_else(|| Some(OffsetDateTime::now_utc())),
-            tags: span.tags.clone(),
+            tags: raw.tags.clone(),
             logs: Vec::new(),
             process_id: self.process_id.clone(),
         };
-        self.duration = self.duration.max(target.duration());
-        self.time = self.time.min(target.start);
+        // Determine the trace duration.
+        // Trace's duration should ben the first span's duration (with longest duration in the trace).
+        self.duration = self.duration.max(span.duration());
+        // Determine the trace time.
+        // Trace's time should be the first span's time (with earliest time in the trace).
+        self.time = self.time.min(span.start);
+        // Make busy and idle tags human readable.
+        for key in ["busy", "idle"] {
+            if let Some(proto::Value {
+                inner: Some(proto::ValueEnum::U64Val(value)),
+            }) = span.tags.remove(key)
+            {
+                span.tags
+                    .insert(key.into(), format_timing_value(value).into());
+            }
+        }
 
-        target
+        span
     }
 }
 
@@ -151,5 +165,35 @@ impl From<proto::Log> for Log {
                 .unwrap_or_else(OffsetDateTime::now_utc),
             fields: log.fields,
         }
+    }
+}
+
+fn format_timing_value(value: u64) -> String {
+    let value = value as f64;
+    if value < 1000.0 {
+        format!("{}us", value)
+    } else if value < 1_000_000.0 {
+        format!("{:.2}ms", value / 1000.0)
+    } else {
+        format!("{:.2}s", value / 1_000_000.0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_timing_value;
+
+    #[test]
+    fn test_timings_format() {
+        assert_eq!(format_timing_value(3), "3us".to_string());
+        assert_eq!(format_timing_value(303), "303us".to_string());
+        assert_eq!(format_timing_value(3003), "3.00ms".to_string());
+        assert_eq!(format_timing_value(3013), "3.01ms".to_string());
+        assert_eq!(format_timing_value(300030), "300.03ms".to_string());
+        assert_eq!(format_timing_value(3003300), "3.00s".to_string());
+        assert_eq!(format_timing_value(3033300), "3.03s".to_string());
+        assert_eq!(format_timing_value(3333300), "3.33s".to_string());
+        assert_eq!(format_timing_value(33000330), "33.00s".to_string());
+        assert_eq!(format_timing_value(33300330), "33.30s".to_string());
     }
 }

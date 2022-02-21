@@ -29,6 +29,18 @@ impl From<value::Inner> for Value {
     }
 }
 
+impl From<i32> for Value {
+    fn from(val: i32) -> Self {
+        value::Inner::I64Val(val as i64).into()
+    }
+}
+
+impl From<u32> for Value {
+    fn from(val: u32) -> Self {
+        value::Inner::U64Val(val as u64).into()
+    }
+}
+
 impl From<i64> for Value {
     fn from(val: i64) -> Self {
         value::Inner::I64Val(val).into()
