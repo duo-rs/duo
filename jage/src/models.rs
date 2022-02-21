@@ -126,7 +126,7 @@ impl Trace {
         // Trace's time should be the first span's time (with earliest time in the trace).
         self.time = self.time.min(span.start);
         // Make busy and idle tags human readable.
-        for key in ["busy", "idle"] {
+        for key in ["@busy", "@idle"] {
             if let Some(proto::Value {
                 inner: Some(proto::ValueEnum::U64Val(value)),
             }) = span.tags.remove(key)
