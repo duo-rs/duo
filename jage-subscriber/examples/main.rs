@@ -10,17 +10,22 @@ fn foo() {
     debug!(test = true, "hello foo!");
     bar();
     debug!("called bar!");
+    foz();
 }
 
 #[tracing::instrument]
 fn bar() {
-    debug!("hello bar!");
     baz();
 }
 
 #[tracing::instrument]
 fn baz() {
     debug!("hello baz!");
+}
+
+#[tracing::instrument]
+fn foz() {
+    debug!("hello foz!");
 }
 
 #[tokio::main]

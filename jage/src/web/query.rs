@@ -60,17 +60,15 @@ impl<'a> TraceQuery<'a> {
                 trace.spans = trace
                     .spans
                     .into_iter()
-                    .filter_map(|mut span| {
+                    .map(|mut span| {
                         if let Some(idxs) = span_log_map.get(&span.id) {
                             span.logs = idxs
                                 .iter()
                                 .filter_map(|idx| logs.get(*idx))
                                 .cloned()
                                 .collect();
-                            Some(span)
-                        } else {
-                            None
                         }
+                        span
                     })
                     .collect();
                 TraceExt {
