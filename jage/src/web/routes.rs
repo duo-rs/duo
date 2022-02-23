@@ -1,20 +1,22 @@
+use std::num::NonZeroU64;
 use std::sync::Arc;
 
 use axum::extract::{Extension, Path, Query};
+use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
 use parking_lot::RwLock;
 use serde::Deserialize;
 use time::{Duration, OffsetDateTime};
 
-use crate::Warehouse;
+use crate::{TraceExt, Warehouse};
 
 use super::deser;
 use super::query::TraceQuery;
 use super::JaegerData;
 
 #[derive(Debug, Deserialize)]
-pub struct QueryParameters {
+pub(super) struct QueryParameters {
     pub service: String,
     pub operation: Option<String>,
     #[serde(default, deserialize_with = "deser::option_ignore_error")]
@@ -31,7 +33,7 @@ pub struct QueryParameters {
     pub min_duration: Option<Duration>,
 }
 
-pub async fn traces(
+pub(super) async fn traces(
     Query(parameters): Query<QueryParameters>,
     Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
 ) -> impl IntoResponse {
@@ -41,17 +43,36 @@ pub async fn traces(
     ))
 }
 
-pub async fn services(
+pub(super) async fn services(
     Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
 ) -> impl IntoResponse {
     let warehouse = warehouse.read();
     Json(JaegerData(TraceQuery::new(&warehouse).service_names()))
 }
 
-pub(crate) async fn operations(
+pub(super) async fn operations(
     Path(service): Path<String>,
     Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
 ) -> impl IntoResponse {
     let warehouse = warehouse.read();
     Json(JaegerData(TraceQuery::new(&warehouse).span_names(&service)))
+}
+
+pub(super) async fn trace(
+    Path(id): Path<String>,
+    Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
+) -> impl IntoResponse {
+    let warehouse = warehouse.read();
+    let trace_id = id.parse::<u64>().map(NonZeroU64::new).ok().flatten();
+
+    match trace_id {
+        Some(trace_id) => {
+            if let Some(trace) = TraceQuery::new(&warehouse).get_trace_by_id(&trace_id) {
+                Json(JaegerData(vec![trace])).into_response()
+            } else {
+                Json(JaegerData(Vec::<TraceExt>::new())).into_response()
+            }
+        }
+        None => (StatusCode::NOT_FOUND, format!("trace {} not found", id)).into_response(),
+    }
 }

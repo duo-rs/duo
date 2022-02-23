@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    num::NonZeroU64,
+};
 
 use crate::{Process, TraceExt, Warehouse};
 
@@ -93,6 +96,18 @@ impl<'a> TraceQuery<'a> {
                     .collect::<HashSet<_>>()
             })
             .collect()
+    }
+
+    pub(super) fn get_trace_by_id(&self, trace_id: &NonZeroU64) -> Option<TraceExt> {
+        let processes = self.processes();
+        self.0
+            .traces()
+            .get(trace_id)
+            .cloned()
+            .map(|trace| TraceExt {
+                inner: trace,
+                processes,
+            })
     }
 
     pub(super) fn processes(&self) -> HashMap<String, Process> {

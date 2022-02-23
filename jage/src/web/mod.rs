@@ -37,6 +37,7 @@ pub async fn run_web_server(warehouse: Arc<RwLock<Warehouse>>) -> anyhow::Result
             }),
         )
         .route("/api/traces", get(routes::traces))
+        .route("/api/traces/:id", get(routes::trace))
         .route("/api/services", get(routes::services))
         .route("/api/services/:service/operations", get(routes::operations))
         .fallback(fallback.into_service())
