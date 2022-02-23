@@ -155,12 +155,21 @@ impl Log {
 
 impl From<proto::Log> for Log {
     fn from(log: proto::Log) -> Self {
+        let level = proto::Level::from_i32(log.level)
+            .map(tracing::Level::from)
+            .unwrap_or(tracing::Level::DEBUG);
+
+        // Replace the 'message' key with the 'level' key of the log.
+        // This brings a lot of concise for log-level context in Jaeger UI.
+        let mut fields = log.fields;
+        if let Some(message) = fields.remove("message") {
+            fields.insert(level.as_str().to_lowercase(), message);
+        }
+
         Log {
             idx: 0,
             span_id: log.span_id.map(NonZeroU64::new).flatten(),
-            level: proto::Level::from_i32(log.level)
-                .map(tracing::Level::from)
-                .unwrap_or(tracing::Level::DEBUG),
+            level,
             time: log
                 .time
                 .map(|timestamp| {
@@ -170,7 +179,7 @@ impl From<proto::Log> for Log {
                 })
                 .flatten()
                 .unwrap_or_else(OffsetDateTime::now_utc),
-            fields: log.fields,
+            fields,
         }
     }
 }
