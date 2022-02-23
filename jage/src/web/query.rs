@@ -3,6 +3,8 @@ use std::{
     num::NonZeroU64,
 };
 
+use tracing::Level;
+
 use crate::{Process, TraceExt, Warehouse};
 
 use super::routes::QueryParameters;
@@ -65,11 +67,18 @@ impl<'a> TraceQuery<'a> {
                     .into_iter()
                     .map(|mut span| {
                         if let Some(idxs) = span_log_map.get(&span.id) {
+                            let mut errors = 0;
                             span.logs = idxs
                                 .iter()
                                 .filter_map(|idx| logs.get(*idx))
+                                .inspect(|log| errors += (log.level == Level::ERROR) as i32)
                                 .cloned()
                                 .collect();
+
+                            // Auto insert 'error = true' tag, this will help Jaeger UI show error icon.
+                            if errors > 0 {
+                                span.tags.insert("error".into(), true.into());
+                            }
                         }
                         span
                     })

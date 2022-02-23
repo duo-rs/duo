@@ -1,6 +1,6 @@
 use jage_subscriber::JageLayer;
 use tonic::transport::Uri;
-use tracing::{debug, Level};
+use tracing::{debug, error, Level};
 use tracing_subscriber::{
     self, filter::Targets, fmt, layer::SubscriberExt, util::SubscriberInitExt,
 };
@@ -26,6 +26,7 @@ fn baz() {
 #[tracing::instrument]
 fn foz() {
     debug!("hello foz!");
+    error!("Oops!");
 }
 
 #[tokio::main]
