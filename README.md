@@ -1,4 +1,4 @@
-# Jage
+# Duet
 
 Tracing observability without Jaeger.
 

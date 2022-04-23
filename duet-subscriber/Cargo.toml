@@ -1,0 +1,19 @@
+[package]
+name = "duet-subscriber"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+duet-api = { version = "0.1", path = "../duet-api" }
+rand = "0.8.4"
+tokio = { version = "1.15.0", features = ["time", "sync"] }
+tonic = "0.6.2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = [
+    "registry",
+] }
+
+[dev-dependencies]
+tokio = { version = "1.15.0", features = ["rt-multi-thread"] }
+tracing-subscriber = "0.3"
+log = "0.4.14"

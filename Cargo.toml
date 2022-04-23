@@ -1,4 +1,4 @@
 [workspace]
-members = ["jage", "jage-api", "jage-subscriber"]
-exclude = ["jage-ui"]
+members = ["duet", "duet-api", "duet-subscriber"]
+exclude = ["duet-ui"]
 resolver = "2"
