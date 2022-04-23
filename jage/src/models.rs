@@ -100,27 +100,25 @@ impl Trace {
     pub fn merge_span(&mut self, raw: &proto::Span) {
         let mut span = Span {
             id: NonZeroU64::new(raw.id).expect("Span id cann not be 0"),
-            parent_id: raw.parent_id.map(NonZeroU64::new).flatten(),
+            parent_id: raw.parent_id.and_then(NonZeroU64::new),
             name: raw.name.clone(),
             start: raw
                 .start
                 .clone()
-                .map(|timestamp| {
+                .and_then(|timestamp| {
                     SystemTime::try_from(timestamp)
                         .ok()
                         .map(OffsetDateTime::from)
                 })
-                .flatten()
                 .unwrap_or_else(OffsetDateTime::now_utc),
             end: raw
                 .end
                 .clone()
-                .map(|timestamp| {
+                .and_then(|timestamp| {
                     SystemTime::try_from(timestamp)
                         .ok()
                         .map(OffsetDateTime::from)
                 })
-                .flatten()
                 .or_else(|| Some(OffsetDateTime::now_utc())),
             tags: raw.tags.clone(),
             logs: Vec::new(),
@@ -168,16 +166,15 @@ impl From<proto::Log> for Log {
 
         Log {
             idx: 0,
-            span_id: log.span_id.map(NonZeroU64::new).flatten(),
+            span_id: log.span_id.and_then(NonZeroU64::new),
             level,
             time: log
                 .time
-                .map(|timestamp| {
+                .and_then(|timestamp| {
                     SystemTime::try_from(timestamp)
                         .ok()
                         .map(OffsetDateTime::from)
                 })
-                .flatten()
                 .unwrap_or_else(OffsetDateTime::now_utc),
             fields,
         }
