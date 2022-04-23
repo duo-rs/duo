@@ -16,6 +16,8 @@ pub fn spawn_server(warehouse: Arc<RwLock<Warehouse>>) {
         let addr = "127.0.0.1:6000".parse().unwrap();
         let mut service = DuetServer::new(warehouse);
         service.bootstrap();
+
+        println!("gRPC server listening on 127.0.0.1:6000\n");
         Server::builder()
             .add_service(InstrumentServer::new(service))
             .serve(addr)

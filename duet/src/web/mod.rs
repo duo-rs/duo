@@ -43,7 +43,8 @@ pub async fn run_web_server(warehouse: Arc<RwLock<Warehouse>>) -> anyhow::Result
         .fallback(fallback.into_service())
         .layer(layer);
 
-    axum::Server::bind(&"0.0.0.0:3000".parse()?)
+    println!("Web server listening on 127.0.0.1:3000\n");
+    axum::Server::bind(&"127.0.0.1:3000".parse()?)
         .serve(app.into_make_service())
         .await?;
     Ok(())
