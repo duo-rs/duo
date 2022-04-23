@@ -1,0 +1,3 @@
+[submodule "duet-ui/jaeger-ui"]
+	path = duet-ui/jaeger-ui
+	url = git@github.com:Folyd/jaeger-ui.git
