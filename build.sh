@@ -14,7 +14,7 @@ find ${BUILD_DIR} -type f \( -name "*runtime*.js" -o -name "*.map" \) | xargs rm
 
 TARGET_DIR=../../duet/ui/
 
-if [ -d "${TARGET_DIR}" ]
+if [ -d "${TARGET_DIR}*" ]
 then
     rm -r ${TARGET_DIR}*
 else
