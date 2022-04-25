@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package rs.duo.process;
+
+import "common.proto";
+
+message Process {
+    // Process name.
+    string name = 1;
+    // Process tags.
+    map<string, common.Value> tags = 2;
+}

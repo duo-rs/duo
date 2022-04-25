@@ -1,4 +1,4 @@
 [workspace]
-members = ["duet", "duet-api", "duet-subscriber"]
-exclude = ["duet-ui"]
+members = ["duo", "duo-api", "duo-subscriber"]
+exclude = ["duo-ui"]
 resolver = "2"
