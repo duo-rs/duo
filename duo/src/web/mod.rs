@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{net::SocketAddr, sync::Arc};
 
 use axum::{
     handler::Handler,
@@ -23,7 +23,8 @@ static ROOT_PAGE: Html<&'static str> = Html(include_str!("../../ui/index.html"))
 
 pub struct JaegerData<I: IntoIterator>(pub I);
 
-pub async fn run_web_server(warehouse: Arc<RwLock<Warehouse>>) -> anyhow::Result<()> {
+pub async fn run_web_server(warehouse: Arc<RwLock<Warehouse>>, port: u16) -> anyhow::Result<()> {
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
     let layer = ServiceBuilder::new().layer(AddExtensionLayer::new(warehouse));
     let app = Router::new()
         .route("/", get(|| async { ROOT_PAGE }))
@@ -43,8 +44,8 @@ pub async fn run_web_server(warehouse: Arc<RwLock<Warehouse>>) -> anyhow::Result
         .fallback(fallback.into_service())
         .layer(layer);
 
-    println!("Web server listening on 127.0.0.1:3000\n");
-    axum::Server::bind(&"127.0.0.1:3000".parse()?)
+    println!("Web server listening on http://{}\n", addr);
+    axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await?;
     Ok(())
