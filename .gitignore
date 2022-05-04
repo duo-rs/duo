@@ -10,4 +10,4 @@ Cargo.lock
 **/*.rs.bk
 
 # Jaeger-ui static files, generated from build script
-duo/ui
+# duo/ui
