@@ -35,17 +35,17 @@ I personally think the logging and tracing have equal importance to observabilit
 cargo install duo
 ```
 
-Run `duo`.
+Run `duo start`.
 
 ```
-$ duo
+$ duo start
 
-gRPC server listening on 127.0.0.1:6000
+gRPC server listening on http://127.0.0.1:6000
 
-Web server listening on 127.0.0.1:3000
+Web server listening on http://127.0.0.1:3000
 ```
 
-Open `127.0.0.1:3000` at your local browser to wait application report data.
+Open https://127.0.0.1:3000 at your local browser to wait application report data.
 
 ### Application
 
@@ -72,7 +72,9 @@ async fn main() {
 ```
 > For more example, please see [examples directory](./duo-subscriber/examples/).
 
-Run your application then check the `127.0.0.1:3000` to see the tracing data.
+Run your application then check the http://127.0.0.1:3000 to see the tracing data.
+
+![](./duo-ui.png)
 
 ## Roadmap
 
