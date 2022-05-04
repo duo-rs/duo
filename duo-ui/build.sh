@@ -3,9 +3,9 @@
 set -e
 
 # Copy modified file to jaeger-ui repository
-# cp -r packages/* duo-ui/jaeger-ui/packages/
+# cp -r packages/* jaeger-ui/packages/
 
-cd duo-ui/jaeger-ui
+cd jaeger-ui
 
 yarn && yarn build
 
