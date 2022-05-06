@@ -10,7 +10,9 @@
 
 ## What is duo?
 
-Duo is a simple toolkit to provide observability to rust applications with logging and tracing. This project was inspired by [tracing](https://github.com/tokio-rs/tracing) and [console](https://github.com/tokio-rs/console), which mainly consist of multiple components:
+Duo is an easy-to-use observability solution that provides both logging and tracing capabilities for Rust applications. While traditional observability solutions are powerful (such as [ELK](https://elastic.co), [jaegertracing](https://jaegertracing.io), etc), it is also complex to deploy and maintain. Duo aimed to provide a less-powerful but complete set of observability features, with extremely simple deployment and maintenance. 
+
+This project was inspired by [tracing](https://github.com/tokio-rs/tracing) and [console](https://github.com/tokio-rs/console), which mainly consist of multiple components:
 
 - **duo-api** - a wire protocol for logging and tracing data. The wire format is defined using gRPC and protocol buffers.
 - **duo-subscriber** - instrumentation for collecting logging and tracing data from a process and exposing it over the wire format. `duo-subscriber` crate in this repository contains an implementation of the instrumentation-side API as a [tracing-subscriber](https://crates.io/crates/tracing-subscriber) [Layer](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/layer/trait.Layer.html), for projects using Tokio and tracing.
@@ -84,7 +86,7 @@ Run your application then check the http://127.0.0.1:3000 to see the tracing dat
 
 - [ ] Support logging diagnosing.
 
-- [ ] Support persist tracing and logging data into the database.
+- [ ] Support data persistence. See [#1](https://github.com/duo-rs/duo/issues/1).
 
 ## License
 
