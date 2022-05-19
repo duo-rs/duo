@@ -1,11 +1,12 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use axum::{
+    extract::Extension,
     handler::Handler,
     http::{StatusCode, Uri},
     response::{Html, IntoResponse},
     routing::{get, get_service},
-    AddExtensionLayer, Router,
+    Router,
 };
 use parking_lot::RwLock;
 use tower::ServiceBuilder;
@@ -25,7 +26,7 @@ pub struct JaegerData<I: IntoIterator>(pub I);
 
 pub async fn run_web_server(warehouse: Arc<RwLock<Warehouse>>, port: u16) -> anyhow::Result<()> {
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
-    let layer = ServiceBuilder::new().layer(AddExtensionLayer::new(warehouse));
+    let layer = ServiceBuilder::new().layer(Extension(warehouse));
     let app = Router::new()
         .route("/", get(|| async { ROOT_PAGE }))
         .nest(
