@@ -125,7 +125,7 @@ impl Trace {
             process_id: self.process_id.clone(),
         };
         // Determine the trace duration.
-        // Trace's duration should ben the first span's duration (with longest duration in the trace).
+        // Trace's duration should be the first span's duration (with longest duration in the trace).
         self.duration = self.duration.max(span.duration());
         // Determine the trace time.
         // Trace's time should be the first span's time (with earliest time in the trace).
