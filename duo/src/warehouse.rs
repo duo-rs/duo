@@ -47,18 +47,19 @@ impl Warehouse {
     }
 
     /// Register new process and return the process id.
-    pub(crate) fn register_process(&mut self, process: proto::Process) -> String {
+    pub(crate) fn register_process(&mut self, process: proto::Process) -> Process {
         let service_name = process.name;
         let service_processes = self.services.entry(service_name.clone()).or_default();
 
         // TODO: generate new process id
         let process_id = format!("{}:{}", &service_name, service_processes.len());
-        service_processes.push(Process {
-            id: process_id.clone(),
+        let process = Process {
+            id: process_id,
             service_name,
             tags: process.tags,
-        });
-        process_id
+        };
+        service_processes.push(process.clone());
+        process
     }
 
     // Merge aggregated data.

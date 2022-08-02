@@ -36,6 +36,10 @@ enum Commands {
         /// The gRPC server listening port.
         #[clap(short, default_value_t = 6000)]
         grpc_port: u16,
+        /// How many days of observation data is stored in a log.
+        #[clap(short, default_value_t = 1)]
+        log_interval: u16,
+
     },
 }
 
@@ -52,8 +56,9 @@ async fn main() -> Result<()> {
         Commands::Start {
             web_port,
             grpc_port,
+            log_interval
         } => {
-            duo::spawn_grpc_server(Arc::clone(&warehouse), grpc_port);
+            duo::spawn_grpc_server(Arc::clone(&warehouse), grpc_port, log_interval);
             duo::run_web_server(warehouse, web_port).await?;
         }
     }

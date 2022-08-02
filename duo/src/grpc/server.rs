@@ -11,12 +11,14 @@ use tonic::{Request, Response, Status};
 use tracing::{debug, info};
 
 use crate::{Aggregator, Warehouse};
+use crate::persist::Persist;
 
 pub struct DuoServer {
     warehouse: Arc<RwLock<Warehouse>>,
     aggregator: Arc<RwLock<Aggregator>>,
     sender: Sender<Message>,
     receiver: Arc<RwLock<Receiver<Message>>>,
+    persist: Arc<RwLock<Persist>>,
 }
 
 #[derive(Debug)]
@@ -40,6 +42,7 @@ impl DuoServer {
             aggregator: Arc::new(RwLock::new(Aggregator::new())),
             sender,
             receiver: Arc::new(RwLock::new(receiver)),
+            persist: Arc::new(RwLock::new(Persist::new())),
         }
     }
 
@@ -47,13 +50,16 @@ impl DuoServer {
         let warehouse = Arc::clone(&self.warehouse);
         let receiver = Arc::clone(&self.receiver);
         let aggregator = Arc::clone(&self.aggregator);
+        let persist_for_receiver = Arc::clone(&self.persist);
+        let persist_for_aggregate = Arc::clone(&self.persist);
         tokio::spawn(async move {
             loop {
                 let mut receiver = receiver.write();
                 match receiver.recv().await {
                     Some(Message::Register(RegisterMessage { tx, process })) => {
-                        let process_id = warehouse.write().register_process(process);
-                        tx.send(process_id).await.unwrap();
+                        let process = warehouse.write().register_process(process);
+                        tx.send(process.id.clone()).await.unwrap();
+                        persist_for_receiver.read().persist_process(process).await;
                     }
                     Some(Message::Span(span)) => {
                         aggregator.write().record_span(span);
@@ -74,10 +80,12 @@ impl DuoServer {
                 interval.tick().await;
                 let data = aggregator.write().aggregate();
                 let mut warehouse = warehouse.write();
-                warehouse.merge_data(data);
+                warehouse.merge_data(data.clone());
                 debug!("After merge: {:?}", warehouse);
+                persist_for_aggregate.read().persist_data(data).await;
             }
         });
+        self.persist.write().bootstrap();
     }
 }
 

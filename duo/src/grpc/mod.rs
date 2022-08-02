@@ -11,7 +11,7 @@ use tonic::transport::Server;
 
 mod server;
 
-pub fn spawn_server(warehouse: Arc<RwLock<Warehouse>>, port: u16) {
+pub fn spawn_server(warehouse: Arc<RwLock<Warehouse>>, port: u16, log_interval: u16) {
     tokio::spawn(async move {
         let addr = SocketAddr::from(([127, 0, 0, 1], port));
         let mut service = DuoServer::new(warehouse);
@@ -24,4 +24,5 @@ pub fn spawn_server(warehouse: Arc<RwLock<Warehouse>>, port: u16) {
             .await
             .unwrap();
     });
+    
 }

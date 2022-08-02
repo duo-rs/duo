@@ -133,8 +133,8 @@ impl Trace {
         // Make busy and idle tags human readable.
         for key in ["@busy", "@idle"] {
             if let Some(proto::Value {
-                inner: Some(proto::ValueEnum::U64Val(value)),
-            }) = span.tags.remove(key)
+                            inner: Some(proto::ValueEnum::U64Val(value)),
+                        }) = span.tags.remove(key)
             {
                 span.tags
                     .insert(key.into(), format_timing_value(value).into());
