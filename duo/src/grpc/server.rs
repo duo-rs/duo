@@ -11,7 +11,7 @@ use tonic::{Request, Response, Status};
 use tracing::{debug, info};
 
 use crate::{Aggregator, Warehouse};
-use crate::persist::Persist;
+use crate::data::persist::Persist;
 
 pub struct DuoServer {
     warehouse: Arc<RwLock<Warehouse>>,

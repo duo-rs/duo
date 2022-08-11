@@ -1,4 +1,4 @@
-use std::{sync::Arc};
+use std::sync::Arc;
 
 use parking_lot::RwLock;
 use tokio::sync::mpsc::{channel, Receiver, Sender};

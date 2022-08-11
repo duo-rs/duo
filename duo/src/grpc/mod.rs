@@ -24,5 +24,4 @@ pub fn spawn_server(warehouse: Arc<RwLock<Warehouse>>, port: u16, log_interval: 
             .await
             .unwrap();
     });
-    
 }
