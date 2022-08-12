@@ -9,7 +9,7 @@ use duo_api as proto;
 
 use crate::{Log, Process, Span, Trace};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum PersistValue {
     String(String),
     U64(u64),
@@ -54,7 +54,7 @@ impl From<PersistValue> for proto::Value {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ProcessPersist {
     pub id: String,
     pub service_name: String,
@@ -81,7 +81,7 @@ impl From<ProcessPersist> for Process {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SpanPersist {
     pub id: NonZeroU64,
     pub parent_id: Option<NonZeroU64>,
@@ -136,7 +136,7 @@ impl PartialEq for SpanPersist {
 
 impl Eq for SpanPersist {}
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TracePersist {
     pub id: NonZeroU64,
     pub duration: Duration,
@@ -170,7 +170,7 @@ impl From<TracePersist> for Trace {
 }
 
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LogPersist {
     pub span_id: Option<NonZeroU64>,
     pub level: u8,
