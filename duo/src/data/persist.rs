@@ -6,6 +6,15 @@ use tracing::debug;
 
 use crate::{Process};
 use crate::aggregator::AggregatedData;
+use crate::data::serialize::{LogPersist, ProcessPersist, TracePersist};
+use crate::data::writer::PersistWriter;
+
+#[derive(Clone)]
+pub struct PersistConfig {
+    /// current path of writer write. for example `./log/`
+    pub path: String,
+    pub log_load_time: u32,
+}
 
 pub struct Persist {
     persist_sender: Sender<PersistMessage>,
@@ -26,21 +35,51 @@ impl Persist {
             persist_receiver: Arc::new(RwLock::new(persist_receiver)),
         }
     }
-    //TODO: 如果 bootstrap 里的线程不改变 self, 可以将 bootstrap 改成不可变, 去掉 RWLock
-    pub fn bootstrap(&mut self) {
+
+    pub fn bootstrap(& self, mut config: PersistConfig) {
         let persist_receiver = Arc::clone(&self.persist_receiver);
         tokio::spawn(async move {
-            // let process_file =
+            let base_path = config.path;
+            config.path = format!("{}{}", base_path, "process");
+            let mut process_writer = PersistWriter::new(config.clone()).await.unwrap();
+            config.path = format!("{}{}", base_path, "trace");
+            let mut trace_writer = PersistWriter::new(config.clone()).await.unwrap();
+            config.path = format!("{}{}", base_path, "log");
+            let mut log_writer = PersistWriter::new(config).await.unwrap();
             loop {
                 let mut persist_receiver = persist_receiver.write();
                 match persist_receiver.recv().await {
                     Some(PersistMessage::Process(process)) => {
-                        //TODO: Process { id: "example:0", service_name: "example", tags: {"duo-version": Value { inner: Some(StrVal("0.1.0")) }} }
-                        debug!("hhh: receive persist process info: {:?}", process);
+                        if (!process.id.is_empty()) && (!process.service_name.is_empty()) {
+                            if let Err(e) = process_writer.write(ProcessPersist::from(process)).await {
+                                debug!("persist process info error: {:?}", e);
+                            }
+                        }
                     }
                     Some(PersistMessage::Data(data)) => {
-                        //TODO:
-                        debug!("hhh: receive persist data info: {:?}", data);
+                        if !data.logs.is_empty() {
+                            for log in data.logs {
+                                if let Err(e) = log_writer.write(LogPersist::from(log)).await {
+                                    debug!("persist log info error: {:?}", e);
+                                }
+                            }
+                        }
+                        if !data.traces.is_empty() {
+                            for trace in data.traces {
+                                if let Err(e) = trace_writer.write(TracePersist::from(trace.1)).await {
+                                    debug!("persist trace info error: {:?}", e);
+                                }
+                            }
+                        }
+                        if let Err(e) = process_writer.flush().await {
+                            debug!("persist flush process info error: {:?}", e);
+                        }
+                        if let Err(e) = log_writer.flush().await {
+                            debug!("persist flush log info error: {:?}", e);
+                        }
+                        if let Err(e) = trace_writer.flush().await {
+                            debug!("persist flush trace info error: {:?}", e);
+                        }
                     }
                     None => {}
                 }

@@ -10,7 +10,7 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tonic::{Request, Response, Status};
 use tracing::{debug, info};
 
-use crate::{Aggregator, Warehouse};
+use crate::{Aggregator, PersistConfig, Warehouse};
 use crate::data::persist::Persist;
 
 pub struct DuoServer {
@@ -18,7 +18,7 @@ pub struct DuoServer {
     aggregator: Arc<RwLock<Aggregator>>,
     sender: Sender<Message>,
     receiver: Arc<RwLock<Receiver<Message>>>,
-    persist: Arc<RwLock<Persist>>,
+    persist: Arc<Persist>,
 }
 
 #[derive(Debug)]
@@ -42,11 +42,11 @@ impl DuoServer {
             aggregator: Arc::new(RwLock::new(Aggregator::new())),
             sender,
             receiver: Arc::new(RwLock::new(receiver)),
-            persist: Arc::new(RwLock::new(Persist::new())),
+            persist: Arc::new(Persist::new()),
         }
     }
 
-    pub fn bootstrap(&mut self) {
+    pub fn bootstrap(&mut self, persist_config: PersistConfig) {
         let warehouse = Arc::clone(&self.warehouse);
         let receiver = Arc::clone(&self.receiver);
         let aggregator = Arc::clone(&self.aggregator);
@@ -59,7 +59,7 @@ impl DuoServer {
                     Some(Message::Register(RegisterMessage { tx, process })) => {
                         let process = warehouse.write().register_process(process);
                         tx.send(process.id.clone()).await.unwrap();
-                        persist_for_receiver.read().persist_process(process).await;
+                        persist_for_receiver.persist_process(process).await;
                     }
                     Some(Message::Span(span)) => {
                         aggregator.write().record_span(span);
@@ -82,10 +82,10 @@ impl DuoServer {
                 let mut warehouse = warehouse.write();
                 warehouse.merge_data(data.clone());
                 debug!("After merge: {:?}", warehouse);
-                persist_for_aggregate.read().persist_data(data).await;
+                persist_for_aggregate.persist_data(data).await;
             }
         });
-        self.persist.write().bootstrap();
+        self.persist.bootstrap(persist_config);
     }
 }
 

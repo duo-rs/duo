@@ -1,4 +1,4 @@
 pub mod persist;
-mod serialize;
-mod writer;
-mod reader;
+pub mod serialize;
+pub mod writer;
+pub mod reader;

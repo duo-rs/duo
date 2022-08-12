@@ -4,18 +4,16 @@ use time::{Date, OffsetDateTime};
 use tokio::fs::{create_dir_all, File, OpenOptions};
 use tokio::io;
 use tokio::io::{AsyncWriteExt, BufWriter};
+use crate::data::persist::PersistConfig;
 
-pub struct PersistConfig {
-    /// current path of writer write. for example `./log/`
-    pub(crate) path: String,
-    pub(crate) log_reserve_time: u32,
-}
 
-struct PersistWriter {
+pub struct PersistWriter {
     writer: BufWriter<File>,
     buffer: Vec<u8>,
     current_time: Date,
     op: PersistConfig,
+    // is the data be write but not flush
+    dirty: bool,
 }
 
 impl PersistWriter {
@@ -35,6 +33,7 @@ impl PersistWriter {
             op,
             current_time,
             writer: BufWriter::new(f),
+            dirty: false,
         })
     }
     pub async fn write(&mut self, data: impl Serialize) -> io::Result<()> {
@@ -58,13 +57,17 @@ impl PersistWriter {
         self.buffer.append(&mut len);
         self.buffer.append(&mut encoded);
         // self.buffer.append(&mut align);
+        self.dirty = true;
         Ok(())
     }
 
     pub async fn flush(&mut self) -> io::Result<()> {
-        io::copy(&mut &self.buffer[..], &mut self.writer).await?;
-        self.writer.flush().await?;
-        self.buffer.clear();
+        if self.dirty {
+            io::copy(&mut &self.buffer[..], &mut self.writer).await?;
+            self.writer.flush().await?;
+            self.buffer.clear();
+        }
+        self.dirty = false;
         Ok(())
     }
 
@@ -77,6 +80,7 @@ impl PersistWriter {
 #[cfg(test)]
 mod test {
     use std::collections::HashMap;
+    use std::io;
     use crate::data::reader::PersistReader;
     use crate::data::serialize::{PersistValue, ProcessPersist};
     use crate::data::writer::{PersistConfig, PersistWriter};
@@ -98,7 +102,7 @@ mod test {
         // writer write
         let mut writer = PersistWriter::new(PersistConfig {
             path: "/tmp/duo/data/process/".to_string(),
-            log_reserve_time: 14,
+            log_load_time: 14,
         }).await.unwrap();
         let mut process = ProcessPersist {
             id: String::new(),
@@ -128,12 +132,12 @@ mod test {
         // reader read
         let _error = PersistReader::new(PersistConfig {
             path: "/tmp/duo/not_exist/".to_string(),
-            log_reserve_time: 14,
+            log_load_time: 14,
         });
-        assert!(matches!(PersistReader::PATH_NOT_EXIST,_error));
+        assert!(matches!(io::ErrorKind::NotFound,_error));
         let mut reader = PersistReader::new(PersistConfig {
             path: "/tmp/duo/data/process/".to_string(),
-            log_reserve_time: 14,
+            log_load_time: 14,
         }).unwrap();
         let data: Vec<ProcessPersist> = reader.parse().await.unwrap();
         let mut process_map = HashMap::new();

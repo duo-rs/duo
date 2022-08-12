@@ -1,27 +1,33 @@
 use std::fs;
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use serde::de::DeserializeOwned;
+use time::{Date, Duration, format_description, OffsetDateTime};
 use tokio::fs::{OpenOptions};
 use tokio::io;
 use tokio::io::AsyncReadExt;
-use crate::data::writer::PersistConfig;
+use crate::data::persist::PersistConfig;
 
 pub struct PersistReader {
     path_list: Vec<PathBuf>,
 }
 
 impl PersistReader {
-    pub const PATH_NOT_EXIST: Result<Self, &'static str> = Err("PersistReader's config read path not exist");
-
-    pub fn new(config: PersistConfig) -> Result<Self, &'static str> {
+    pub fn new(config: PersistConfig) -> io::Result<Self> {
         let dir = Path::new(&config.path);
         if !dir.exists() {
-            return Self::PATH_NOT_EXIST;
+            return Err(io::Error::new(ErrorKind::NotFound, "PersistReader's config read path not exist"));
         }
-        let mut path_list = Vec::with_capacity(config.log_reserve_time as usize);
+        let mut path_list = Vec::with_capacity(config.log_load_time as usize);
+        let date_format = format_description::parse("[year]-[month]-[day]").unwrap();
+        let current = OffsetDateTime::now_utc().date();
         for entry in fs::read_dir(dir).unwrap() {
             let entry = entry.unwrap();
-            path_list.push(entry.path())
+            if let Ok(date) = Date::parse(entry.file_name().to_str().unwrap(), &date_format) {
+                if current - date < Duration::days(config.log_load_time as i64) {
+                    path_list.push(entry.path());
+                }
+            }
         }
         Ok(Self {
             path_list

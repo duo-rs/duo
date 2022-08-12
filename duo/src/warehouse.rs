@@ -1,7 +1,9 @@
-use std::{collections::HashMap, num::NonZeroU64};
+use std::{collections::HashMap, io, num::NonZeroU64};
 
-use crate::{aggregator::AggregatedData, Log, Process, Trace};
+use crate::{aggregator::AggregatedData, Log, PersistConfig, Process, Trace};
 use duo_api as proto;
+use crate::data::reader::PersistReader;
+use crate::data::serialize::{LogPersist, ProcessPersist, TracePersist};
 
 #[derive(Default)]
 pub struct Warehouse {
@@ -84,5 +86,39 @@ impl Warehouse {
             log.idx = idx;
             self.logs.push(log);
         });
+    }
+
+    /// replay the persist log store on file system, restore the data in the warehouse.
+    pub async fn replay(&mut self, mut config: PersistConfig) -> io::Result<()> {
+        let base_path = config.path;
+        config.path = format!("{}{}", base_path, "process");
+        let mut process_reader = PersistReader::new(config.clone())?;
+        config.path = format!("{}{}", base_path, "trace");
+        let mut trace_reader = PersistReader::new(config.clone())?;
+        config.path = format!("{}{}", base_path, "log");
+        let mut log_reader = PersistReader::new(config)?;
+        let processes: Vec<ProcessPersist> = process_reader.parse().await?;
+        let traces: Vec<TracePersist> = trace_reader.parse().await?;
+        let logs: Vec<LogPersist> = log_reader.parse().await?;
+        for process in processes {
+            let service_processes = self.services.entry(process.service_name.clone()).or_default();
+            service_processes.push(Process::from(process));
+        }
+        for trace in traces {
+            self.traces.insert(trace.id, Trace::from(trace));
+        }
+        let mut i = 0;
+        for log in logs {
+            let mut local_log = Log::from(log);
+            local_log.idx = i;
+            // construct span_log_map
+            if let Some(span_id) = local_log.span_id {
+                let idx = self.span_log_map.entry(span_id).or_default();
+                idx.push(i);
+            }
+            self.logs.push(local_log);
+            i += 1;
+        }
+        Ok(())
     }
 }
