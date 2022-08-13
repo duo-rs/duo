@@ -4,20 +4,17 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0"
-axum = "0.5.0"
-clap = { version = "3.1", default-features = false, features = [
-    "std",
-    "derive",
-] }
+anyhow = "1"
+axum = "0.5"
+clap = { version = "3", default-features = false, features = ["std", "derive"] }
 duo-api = { version = "0.1", path = "../duo-api" }
-parking_lot = { version = "0.12.0", features = ["send_guard"] }
+parking_lot = { version = "0.12", features = ["send_guard"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-time = "0.3.7"
-tokio = { version = "1.15.0", features = ["rt-multi-thread"] }
-tonic = "0.6.2"
-tower = "0.4.11"
-tower-http = { version = "0.2.2", features = ["fs"] }
-tracing = "0.1.29"
-tracing-subscriber = "0.3.5"
+time = "0.3"
+tokio = { version = "1", features = ["rt-multi-thread"] }
+tonic = "0.8"
+tower = "0.4"
+tower-http = { version = "0.3", features = ["fs"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"

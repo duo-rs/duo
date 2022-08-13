@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-prost = "0.9"
-prost-types = "0.9"
-tonic = "0.6"
-tracing-core = "0.1.21"
+prost = "0.11"
+prost-types = "0.11"
+tonic = "0.8"
+tracing-core = "0.1"
 
 [build-dependencies]
-tonic-build = "0.6"
+tonic-build = "0.8"
