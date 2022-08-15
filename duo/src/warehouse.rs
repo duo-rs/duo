@@ -1,4 +1,5 @@
 use std::{collections::HashMap, io, num::NonZeroU64};
+use std::path::Path;
 
 use crate::{aggregator::AggregatedData, Log, PersistConfig, Process, Trace};
 use duo_api as proto;
@@ -91,11 +92,15 @@ impl Warehouse {
     /// replay the persist log store on file system, restore the data in the warehouse.
     pub async fn replay(&mut self, mut config: PersistConfig) -> io::Result<()> {
         let base_path = config.path;
-        config.path = format!("{}{}", base_path, "process");
+        // the base path not exist, give up replay
+        if !Path::new(&base_path).exists() {
+            return Ok(());
+        }
+        config.path = format!("{}/{}", base_path, "process");
         let mut process_reader = PersistReader::new(config.clone())?;
-        config.path = format!("{}{}", base_path, "trace");
+        config.path = format!("{}/{}", base_path, "trace");
         let mut trace_reader = PersistReader::new(config.clone())?;
-        config.path = format!("{}{}", base_path, "log");
+        config.path = format!("{}/{}", base_path, "log");
         let mut log_reader = PersistReader::new(config)?;
         let processes: Vec<ProcessPersist> = process_reader.parse().await?;
         let traces: Vec<TracePersist> = trace_reader.parse().await?;

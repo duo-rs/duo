@@ -1,0 +1,3 @@
+# by default, data will persist into this folder
+# for test convenience, ignore data folder in current crate
+/data

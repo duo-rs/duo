@@ -5,6 +5,7 @@ use clap::StructOpt;
 use duo::{PersistConfig, Warehouse};
 use parking_lot::RwLock;
 use tracing::Level;
+use tracing::debug;
 use tracing_subscriber::{filter::Targets, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 // ASCII Art generated from https://patorjk.com/software/taag/#p=display&h=0&v=0&f=ANSI%20Regular&t=Duo
@@ -41,7 +42,7 @@ enum Commands {
         #[clap(short, default_value_t = 14)]
         persist_data_load_time: u32,
         /// where the observation data is stored.
-        #[clap(short, default_value = "./")]
+        #[clap(default_value = "./data")]
         persist_data_path: String,
     },
 }
@@ -66,7 +67,9 @@ async fn main() -> Result<()> {
                 path: persist_data_path,
                 log_load_time: persist_data_load_time,
             };
-            warehouse.write().replay(persist_config.clone()).await?;
+            if let Err(e) = warehouse.write().replay(persist_config.clone()).await {
+                debug!("warehouse data replay error: {}",e);
+            }
             duo::spawn_grpc_server(Arc::clone(&warehouse), grpc_port, persist_config);
             duo::run_web_server(warehouse, web_port).await?;
         }

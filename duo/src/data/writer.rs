@@ -26,7 +26,7 @@ impl PersistWriter {
             .read(true)
             .append(true)
             .create(true)
-            .open(format!("{}{}", op.path, current_time.to_string()))
+            .open(format!("{}/{}", op.path, current_time.to_string()))
             .await?;
         Ok(Self {
             buffer: Vec::with_capacity(1000),
@@ -49,7 +49,7 @@ impl PersistWriter {
                 .read(true)
                 .append(true)
                 .create(true)
-                .open(format!("{}{}", self.op.path, self.current_time.to_string()))
+                .open(format!("{}/{}", self.op.path, self.current_time.to_string()))
                 .await?;
             self.writer = BufWriter::new(f);
         }

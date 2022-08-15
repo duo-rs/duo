@@ -40,11 +40,11 @@ impl Persist {
         let persist_receiver = Arc::clone(&self.persist_receiver);
         tokio::spawn(async move {
             let base_path = config.path;
-            config.path = format!("{}{}", base_path, "process");
+            config.path = format!("{}/{}", base_path, "process");
             let mut process_writer = PersistWriter::new(config.clone()).await.unwrap();
-            config.path = format!("{}{}", base_path, "trace");
+            config.path = format!("{}/{}", base_path, "trace");
             let mut trace_writer = PersistWriter::new(config.clone()).await.unwrap();
-            config.path = format!("{}{}", base_path, "log");
+            config.path = format!("{}/{}", base_path, "log");
             let mut log_writer = PersistWriter::new(config).await.unwrap();
             loop {
                 let mut persist_receiver = persist_receiver.write();
