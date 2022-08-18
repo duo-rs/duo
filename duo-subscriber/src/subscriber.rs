@@ -58,8 +58,8 @@ impl DuoLayer {
 
     pub async fn with_handle(name: &'static str, uri: Uri) -> (Self, JoinHandle<()>) {
         let (sender, mut receiver) = mpsc::channel(2048);
-        let mut client = Connection::connect(name, uri).await;
         let handler = tokio::spawn(async move {
+            let mut client = Connection::connect(name, uri).await;
             while let Some(message) = receiver.recv().await {
                 match message {
                     Message::NewSpan(span) | Message::CloseSpan(span) => {

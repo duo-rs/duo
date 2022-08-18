@@ -1,4 +1,4 @@
-use std::{error::Error, time::Duration};
+use std::time::Duration;
 
 use duo_api::instrument::instrument_client::InstrumentClient;
 use tonic::transport::Uri;
@@ -22,8 +22,10 @@ impl Connection {
             }
 
             let try_connect = async {
-                let client = InstrumentClient::connect(uri.clone()).await?;
-                Ok::<InstrumentClient<_>, Box<dyn Error>>(client)
+                let client = InstrumentClient::connect(uri.clone())
+                    .await
+                    .map_err(|err| format!("InstrumentClient connect error: {}", err))?;
+                Ok::<InstrumentClient<_>, String>(client)
             };
 
             match try_connect.await {
