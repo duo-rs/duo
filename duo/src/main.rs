@@ -42,8 +42,8 @@ enum Commands {
         #[clap(short, default_value_t = 14)]
         persist_data_load_time: u32,
         /// where the observation data is stored.
-        #[clap(default_value = "./data")]
-        persist_data_path: String,
+        #[clap(short, default_value = "./data")]
+        data_persist_path: String,
     },
 }
 
@@ -61,10 +61,10 @@ async fn main() -> Result<()> {
             web_port,
             grpc_port,
             persist_data_load_time,
-            persist_data_path
+            data_persist_path
         } => {
             let persist_config = PersistConfig {
-                path: persist_data_path,
+                path: data_persist_path,
                 log_load_time: persist_data_load_time,
             };
             if let Err(e) = warehouse.write().replay(persist_config.clone()).await {
