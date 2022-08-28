@@ -1,7 +1,7 @@
 use std::{net::SocketAddr, sync::Arc};
 
-use crate::Warehouse;
 use crate::data::persist::PersistConfig;
+use crate::Warehouse;
 
 use self::server::DuoServer;
 

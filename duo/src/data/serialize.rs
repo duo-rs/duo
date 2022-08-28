@@ -1,7 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::num::NonZeroU64;
-use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
 use tracing::Level;
 
@@ -36,20 +36,18 @@ impl From<PersistValue> for proto::Value {
     fn from(persist_value: PersistValue) -> Self {
         match persist_value {
             PersistValue::String(data) => proto::Value {
-                inner: Some(proto::ValueEnum::StrVal(data))
+                inner: Some(proto::ValueEnum::StrVal(data)),
             },
             PersistValue::U64(data) => proto::Value {
-                inner: Some(proto::ValueEnum::U64Val(data))
+                inner: Some(proto::ValueEnum::U64Val(data)),
             },
             PersistValue::I64(data) => proto::Value {
-                inner: Some(proto::ValueEnum::I64Val(data))
+                inner: Some(proto::ValueEnum::I64Val(data)),
             },
             PersistValue::Bool(data) => proto::Value {
-                inner: Some(proto::ValueEnum::BoolVal(data))
+                inner: Some(proto::ValueEnum::BoolVal(data)),
             },
-            PersistValue::None => proto::Value {
-                inner: None
-            },
+            PersistValue::None => proto::Value { inner: None },
         }
     }
 }
@@ -66,7 +64,11 @@ impl From<Process> for ProcessPersist {
         Self {
             id: process.id,
             service_name: process.service_name,
-            tags: process.tags.into_iter().map(|(k, v)| (k, PersistValue::from(v))).collect(),
+            tags: process
+                .tags
+                .into_iter()
+                .map(|(k, v)| (k, PersistValue::from(v)))
+                .collect(),
         }
     }
 }
@@ -76,7 +78,11 @@ impl From<ProcessPersist> for Process {
         Self {
             id: process_persist.id,
             service_name: process_persist.service_name,
-            tags: process_persist.tags.into_iter().map(|(k, v)| (k, proto::Value::from(v))).collect(),
+            tags: process_persist
+                .tags
+                .into_iter()
+                .map(|(k, v)| (k, proto::Value::from(v)))
+                .collect(),
         }
     }
 }
@@ -100,7 +106,11 @@ impl From<SpanPersist> for Span {
             name: span_persist.name,
             start: span_persist.start,
             end: span_persist.end,
-            tags: span_persist.tags.into_iter().map(|(k, v)| (k, proto::Value::from(v))).collect(),
+            tags: span_persist
+                .tags
+                .into_iter()
+                .map(|(k, v)| (k, proto::Value::from(v)))
+                .collect(),
             logs: Vec::new(),
             process_id: span_persist.process_id,
         }
@@ -115,7 +125,11 @@ impl From<Span> for SpanPersist {
             name: span.name,
             start: span.start,
             end: span.end,
-            tags: span.tags.into_iter().map(|(k, v)| (k, PersistValue::from(v))).collect(),
+            tags: span
+                .tags
+                .into_iter()
+                .map(|(k, v)| (k, PersistValue::from(v)))
+                .collect(),
             process_id: span.process_id,
         }
     }
@@ -151,7 +165,7 @@ impl From<Trace> for TracePersist {
             id: trace.id,
             duration: trace.duration,
             time: trace.time,
-            spans: trace.spans.into_iter().map(|x| SpanPersist::from(x)).collect(),
+            spans: trace.spans.into_iter().map(SpanPersist::from).collect(),
             process_id: trace.process_id,
         }
     }
@@ -163,12 +177,11 @@ impl From<TracePersist> for Trace {
             id: trace_persist.id,
             duration: trace_persist.duration,
             time: trace_persist.time,
-            spans: trace_persist.spans.into_iter().map(|x| Span::from(x)).collect(),
+            spans: trace_persist.spans.into_iter().map(Span::from).collect(),
             process_id: trace_persist.process_id,
         }
     }
 }
-
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LogPersist {
@@ -192,11 +205,14 @@ impl From<LogPersist> for Log {
                 _ => Level::ERROR,
             },
             time: log_persist.time,
-            fields: log_persist.fields.into_iter().map(|(k, v)| (k, proto::Value::from(v))).collect(),
+            fields: log_persist
+                .fields
+                .into_iter()
+                .map(|(k, v)| (k, proto::Value::from(v)))
+                .collect(),
         }
     }
 }
-
 
 impl From<Log> for LogPersist {
     fn from(log: Log) -> Self {
@@ -210,7 +226,11 @@ impl From<Log> for LogPersist {
                 Level::ERROR => 4,
             },
             time: log.time,
-            fields: log.fields.into_iter().map(|(k, v)| (k, PersistValue::from(v))).collect(),
+            fields: log
+                .fields
+                .into_iter()
+                .map(|(k, v)| (k, PersistValue::from(v)))
+                .collect(),
         }
     }
 }
@@ -222,7 +242,9 @@ mod test {
 
     use time::{Duration, OffsetDateTime};
 
-    use crate::data::serialize::{LogPersist, PersistValue, ProcessPersist, SpanPersist, TracePersist};
+    use crate::data::serialize::{
+        LogPersist, PersistValue, ProcessPersist, SpanPersist, TracePersist,
+    };
 
     #[test]
     fn bincode_process_serialize_test() {

@@ -10,8 +10,8 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tonic::{Request, Response, Status};
 use tracing::{debug, info};
 
-use crate::{Aggregator, PersistConfig, Warehouse};
 use crate::data::persist::Persist;
+use crate::{Aggregator, PersistConfig, Warehouse};
 
 pub struct DuoServer {
     warehouse: Arc<RwLock<Warehouse>>,
@@ -79,9 +79,11 @@ impl DuoServer {
             loop {
                 interval.tick().await;
                 let data = aggregator.write().aggregate();
-                let mut warehouse = warehouse.write();
-                warehouse.merge_data(data.clone());
-                debug!("After merge: {:?}", warehouse);
+                {
+                    let mut warehouse = warehouse.write();
+                    warehouse.merge_data(data.clone());
+                    debug!("After merge: {:?}", warehouse);
+                }
                 persist_for_aggregate.persist_data(data).await;
             }
         });

@@ -1,10 +1,10 @@
-use std::{collections::HashMap, io, num::NonZeroU64};
 use std::path::Path;
+use std::{collections::HashMap, io, num::NonZeroU64};
 
-use crate::{aggregator::AggregatedData, Log, PersistConfig, Process, Trace};
-use duo_api as proto;
 use crate::data::reader::PersistReader;
 use crate::data::serialize::{LogPersist, ProcessPersist, TracePersist};
+use crate::{aggregator::AggregatedData, Log, PersistConfig, Process, Trace};
+use duo_api as proto;
 
 #[derive(Default)]
 pub struct Warehouse {
@@ -105,15 +105,17 @@ impl Warehouse {
         let processes: Vec<ProcessPersist> = process_reader.parse().await?;
         let traces: Vec<TracePersist> = trace_reader.parse().await?;
         let logs: Vec<LogPersist> = log_reader.parse().await?;
-        for process in processes {
-            let service_processes = self.services.entry(process.service_name.clone()).or_default();
+        processes.into_iter().for_each(|process| {
+            let service_processes = self
+                .services
+                .entry(process.service_name.clone())
+                .or_default();
             service_processes.push(Process::from(process));
-        }
-        for trace in traces {
+        });
+        traces.into_iter().for_each(|trace| {
             self.traces.insert(trace.id, Trace::from(trace));
-        }
-        let mut i = 0;
-        for log in logs {
+        });
+        logs.into_iter().enumerate().for_each(|(i, log)| {
             let mut local_log = Log::from(log);
             local_log.idx = i;
             // construct span_log_map
@@ -122,8 +124,7 @@ impl Warehouse {
                 idx.push(i);
             }
             self.logs.push(local_log);
-            i += 1;
-        }
+        });
         Ok(())
     }
 }

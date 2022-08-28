@@ -4,8 +4,8 @@ use anyhow::Result;
 use clap::StructOpt;
 use duo::{PersistConfig, Warehouse};
 use parking_lot::RwLock;
-use tracing::Level;
 use tracing::debug;
+use tracing::Level;
 use tracing_subscriber::{filter::Targets, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 // ASCII Art generated from https://patorjk.com/software/taag/#p=display&h=0&v=0&f=ANSI%20Regular&t=Duo
@@ -48,6 +48,7 @@ enum Commands {
 }
 
 #[tokio::main]
+#[allow(clippy::await_holding_lock)]
 async fn main() -> Result<()> {
     println!("{}", DUO_BANNER);
     tracing_subscriber::registry()
@@ -61,14 +62,14 @@ async fn main() -> Result<()> {
             web_port,
             grpc_port,
             persist_data_load_time,
-            data_persist_path
+            data_persist_path,
         } => {
             let persist_config = PersistConfig {
                 path: data_persist_path,
                 log_load_time: persist_data_load_time,
             };
             if let Err(e) = warehouse.write().replay(persist_config.clone()).await {
-                debug!("warehouse data replay error: {}",e);
+                debug!("warehouse data replay error: {}", e);
             }
             duo::spawn_grpc_server(Arc::clone(&warehouse), grpc_port, persist_config);
             duo::run_web_server(warehouse, web_port).await?;
