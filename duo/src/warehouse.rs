@@ -1,6 +1,9 @@
-use std::{collections::HashMap, num::NonZeroU64};
+use std::path::Path;
+use std::{collections::HashMap, io, num::NonZeroU64};
 
-use crate::{aggregator::AggregatedData, Log, Process, Trace};
+use crate::data::reader::PersistReader;
+use crate::data::serialize::{LogPersist, ProcessPersist, TracePersist};
+use crate::{aggregator::AggregatedData, Log, PersistConfig, Process, Trace};
 use duo_api as proto;
 
 #[derive(Default)]
@@ -47,18 +50,19 @@ impl Warehouse {
     }
 
     /// Register new process and return the process id.
-    pub(crate) fn register_process(&mut self, process: proto::Process) -> String {
+    pub(crate) fn register_process(&mut self, process: proto::Process) -> Process {
         let service_name = process.name;
         let service_processes = self.services.entry(service_name.clone()).or_default();
 
         // TODO: generate new process id
         let process_id = format!("{}:{}", &service_name, service_processes.len());
-        service_processes.push(Process {
-            id: process_id.clone(),
+        let process = Process {
+            id: process_id,
             service_name,
             tags: process.tags,
-        });
-        process_id
+        };
+        service_processes.push(process.clone());
+        process
     }
 
     // Merge aggregated data.
@@ -83,5 +87,44 @@ impl Warehouse {
             log.idx = idx;
             self.logs.push(log);
         });
+    }
+
+    /// replay the persist log store on file system, restore the data in the warehouse.
+    pub async fn replay(&mut self, mut config: PersistConfig) -> io::Result<()> {
+        let base_path = config.path;
+        // the base path not exist, give up replay
+        if !Path::new(&base_path).exists() {
+            return Ok(());
+        }
+        config.path = format!("{}/{}", base_path, "process");
+        let mut process_reader = PersistReader::new(config.clone())?;
+        config.path = format!("{}/{}", base_path, "trace");
+        let mut trace_reader = PersistReader::new(config.clone())?;
+        config.path = format!("{}/{}", base_path, "log");
+        let mut log_reader = PersistReader::new(config)?;
+        let processes: Vec<ProcessPersist> = process_reader.parse().await?;
+        let traces: Vec<TracePersist> = trace_reader.parse().await?;
+        let logs: Vec<LogPersist> = log_reader.parse().await?;
+        processes.into_iter().for_each(|process| {
+            let service_processes = self
+                .services
+                .entry(process.service_name.clone())
+                .or_default();
+            service_processes.push(Process::from(process));
+        });
+        traces.into_iter().for_each(|trace| {
+            self.traces.insert(trace.id, Trace::from(trace));
+        });
+        logs.into_iter().enumerate().for_each(|(i, log)| {
+            let mut local_log = Log::from(log);
+            local_log.idx = i;
+            // construct span_log_map
+            if let Some(span_id) = local_log.span_id {
+                let idx = self.span_log_map.entry(span_id).or_default();
+                idx.push(i);
+            }
+            self.logs.push(local_log);
+        });
+        Ok(())
     }
 }

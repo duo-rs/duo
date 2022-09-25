@@ -16,7 +16,7 @@ pub struct Aggregator {
     logs: Vec<proto::Log>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AggregatedData {
     // <trace_id, Trace>
     pub traces: HashMap<NonZeroU64, Trace>,

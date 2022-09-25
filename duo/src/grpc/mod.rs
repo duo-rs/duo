@@ -1,5 +1,6 @@
 use std::{net::SocketAddr, sync::Arc};
 
+use crate::data::persist::PersistConfig;
 use crate::Warehouse;
 
 use self::server::DuoServer;
@@ -11,11 +12,11 @@ use tonic::transport::Server;
 
 mod server;
 
-pub fn spawn_server(warehouse: Arc<RwLock<Warehouse>>, port: u16) {
+pub fn spawn_server(warehouse: Arc<RwLock<Warehouse>>, port: u16, persist_config: PersistConfig) {
     tokio::spawn(async move {
         let addr = SocketAddr::from(([127, 0, 0, 1], port));
         let mut service = DuoServer::new(warehouse);
-        service.bootstrap();
+        service.bootstrap(persist_config);
 
         println!("gRPC server listening on http://{}\n", addr);
         Server::builder()
