@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1"
-axum = "0.5"
+axum = "0.6"
 clap = { version = "3", default-features = false, features = ["std", "derive"] }
 duo-api = { version = "0.1", path = "../duo-api" }
 parking_lot = { version = "0.12", features = ["send_guard"] }
@@ -13,8 +13,8 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 time = "0.3"
 tokio = { version = "1", features = ["rt-multi-thread"] }
-tonic = "0.8"
+tonic = "0.9"
 tower = "0.4"
-tower-http = { version = "0.3", features = ["fs"] }
+tower-http = { version = "0.4", features = ["fs"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"

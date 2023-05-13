@@ -2,7 +2,6 @@ use std::{net::SocketAddr, sync::Arc};
 
 use axum::{
     extract::Extension,
-    handler::Handler,
     http::{StatusCode, Uri},
     response::{Html, IntoResponse},
     routing::{get, get_service},
@@ -29,7 +28,7 @@ pub async fn run_web_server(warehouse: Arc<RwLock<Warehouse>>, port: u16) -> any
     let layer = ServiceBuilder::new().layer(Extension(warehouse));
     let app = Router::new()
         .route("/", get(|| async { ROOT_PAGE }))
-        .nest(
+        .nest_service(
             "/static",
             get_service(ServeDir::new("ui/static")).handle_error(|error| async move {
                 (
@@ -42,7 +41,7 @@ pub async fn run_web_server(warehouse: Arc<RwLock<Warehouse>>, port: u16) -> any
         .route("/api/traces/:id", get(routes::trace))
         .route("/api/services", get(routes::services))
         .route("/api/services/:service/operations", get(routes::operations))
-        .fallback(fallback.into_service())
+        .fallback(fallback)
         .layer(layer);
 
     println!("Web server listening on http://{}\n", addr);
