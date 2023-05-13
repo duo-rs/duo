@@ -99,7 +99,7 @@ impl Trace {
 
     pub fn merge_span(&mut self, raw: &proto::Span) {
         let mut span = Span {
-            id: NonZeroU64::new(raw.id).expect("Span id can not be 0"),
+            id: NonZeroU64::new(raw.id).expect("Span id cann not be 0"),
             parent_id: raw.parent_id.and_then(NonZeroU64::new),
             name: raw.name.clone(),
             start: raw
