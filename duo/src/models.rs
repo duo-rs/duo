@@ -157,12 +157,8 @@ impl From<proto::Log> for Log {
             .map(tracing::Level::from)
             .unwrap_or(tracing::Level::DEBUG);
 
-        // Replace the 'message' key with the 'level' key of the log.
-        // This brings a lot of concise for log-level context in Jaeger UI.
         let mut fields = log.fields;
-        if let Some(message) = fields.remove("message") {
-            fields.insert(level.as_str().to_lowercase(), message);
-        }
+        fields.insert("level".to_owned(), level.as_str().to_lowercase().into());
 
         Log {
             idx: 0,
