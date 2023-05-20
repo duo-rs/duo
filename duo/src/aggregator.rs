@@ -80,7 +80,7 @@ impl Aggregator {
 
         // Remove all spans of intact traces.
         self.spans
-            .retain(|_, span| intact_trace_ids.contains(&span.trace_id));
+            .retain(|_, span| !intact_trace_ids.contains(&span.trace_id));
 
         let capacity = self.logs.capacity();
         let logs = mem::replace(&mut self.logs, Vec::with_capacity(capacity));
