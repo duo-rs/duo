@@ -43,6 +43,7 @@ pub struct Log {
     /// The span's id the log belong to.
     /// They have no span id if the log emitted out of tracing context.
     pub span_id: Option<NonZeroU64>,
+    pub trace_id: Option<NonZeroU64>,
     pub level: Level,
     pub time: OffsetDateTime,
     pub fields: HashMap<String, proto::Value>,
@@ -163,6 +164,7 @@ impl From<proto::Log> for Log {
         Log {
             idx: 0,
             span_id: log.span_id.and_then(NonZeroU64::new),
+            trace_id: log.trace_id.and_then(NonZeroU64::new),
             level,
             time: log
                 .time

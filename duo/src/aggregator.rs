@@ -57,7 +57,7 @@ impl Aggregator {
     }
 
     /// Aggregate recorded data into [`AggregatedData`].
-    pub fn aggregate(&mut self) -> AggregatedData {
+    pub fn  aggregate(&mut self) -> AggregatedData {
         let mut traces = HashMap::new();
         self.spans.values().for_each(|span| {
             let trace_id = NonZeroU64::new(span.trace_id).expect("trace id cannot be 0");

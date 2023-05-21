@@ -149,17 +149,20 @@ where
             return;
         }
 
-        let span_id = parent_span_ref.and_then(|span_ref| {
-            span_ref
-                .extensions()
-                .get::<proto::Span>()
-                .map(|span| span.id)
-        });
+        let (trace_id, span_id) = parent_span_ref
+            .and_then(|span_ref| {
+                span_ref
+                    .extensions()
+                    .get::<proto::Span>()
+                    .map(|span| (Some(span.trace_id), Some(span.id)))
+            })
+            .unwrap_or_default();
 
         let metadata = event.metadata();
         let fields = HashMap::with_capacity(metadata.fields().len());
         let mut log = proto::Log {
             span_id,
+            trace_id,
             level: proto::Level::from(*metadata.level()) as i32,
             time: Some(SystemTime::now().into()),
             fields,

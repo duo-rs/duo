@@ -8,10 +8,12 @@ import "common.proto";
 message Log {
     // Span id.
     optional uint64 span_id = 1;
+    // Trace id.
+    optional uint64 trace_id = 2;
     // Describes the level of verbosity of a log.
-    common.Level level = 2;
+    common.Level level = 3;
     // Timestamp.
-    google.protobuf.Timestamp time = 5;
+    google.protobuf.Timestamp time = 4;
     // Key-value fileds.
     map<string, common.Value> fields = 7;
 }
