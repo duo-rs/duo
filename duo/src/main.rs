@@ -7,6 +7,7 @@ use tracing::Level;
 use tracing_subscriber::{filter::Targets, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 mod aggregator;
+mod arrow;
 mod grpc;
 mod models;
 mod warehouse;
