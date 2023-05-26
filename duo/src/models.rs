@@ -33,7 +33,6 @@ pub struct Span {
     pub end: Option<OffsetDateTime>,
     pub tags: HashMap<String, proto::Value>,
     pub logs: Vec<Log>,
-    pub process_id: String,
 }
 
 #[derive(Debug, Clone)]
@@ -123,7 +122,6 @@ impl Trace {
                 .or_else(|| Some(OffsetDateTime::now_utc())),
             tags: raw.tags.clone(),
             logs: Vec::new(),
-            process_id: self.process_id.clone(),
         };
         // Determine the trace duration.
         // Trace's duration should be the first span's duration (with longest duration in the trace).

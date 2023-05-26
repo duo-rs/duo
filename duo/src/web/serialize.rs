@@ -11,6 +11,7 @@ use super::JaegerData;
 struct SpanExt<'a> {
     inner: &'a Span,
     trace_id: NonZeroU64,
+    process_id: &'a String,
 }
 
 struct KvFields<'a>(&'a String, &'a proto::Value);
@@ -119,7 +120,7 @@ impl<'a> Serialize for SpanExt<'a> {
         map.serialize_entry("tags", &tags)?;
         map.serialize_entry("logs", &span.logs)?;
 
-        map.serialize_entry("processID", &span.process_id)?;
+        map.serialize_entry("processID", &self.process_id)?;
         map.serialize_entry("warnings", &Null)?;
         map.serialize_entry("flags", &1)?;
 
@@ -144,6 +145,7 @@ impl Serialize for TraceExt {
                 .map(|span| SpanExt {
                     trace_id: trace.id,
                     inner: span,
+                    process_id: &trace.process_id,
                 })
                 .collect::<Vec<_>>(),
         )?;
