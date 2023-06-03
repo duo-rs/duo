@@ -4,6 +4,7 @@ use arrow_array::RecordBatch;
 use parquet::arrow::AsyncArrowWriter;
 use rand::{rngs::ThreadRng, Rng};
 use time::OffsetDateTime;
+
 pub struct PartitionWriter {
     partition_path: String,
 }
@@ -26,6 +27,10 @@ impl PartitionWriter {
         table_name: &str,
         record_batch: RecordBatch,
     ) -> anyhow::Result<()> {
+        if record_batch.num_rows() == 0 {
+            return Ok(());
+        }
+
         let path = std::path::Path::new(table_name).join(&self.partition_path);
         if !path.exists() {
             std::fs::create_dir_all(&path)?;
