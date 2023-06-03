@@ -10,6 +10,7 @@ mod aggregator;
 mod arrow;
 mod grpc;
 mod models;
+mod partition;
 mod warehouse;
 mod web;
 

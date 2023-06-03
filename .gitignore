@@ -11,3 +11,5 @@ Cargo.lock
 
 # Jaeger-ui static files, generated from build script
 # duo/ui
+
+*.parquet

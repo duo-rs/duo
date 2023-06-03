@@ -1,13 +1,12 @@
-use std::{collections::HashMap, fs::File, io::Write, num::NonZeroU64, vec};
+use std::{collections::HashMap, num::NonZeroU64};
 
 use crate::{
     aggregator::AggregatedData,
     arrow::{LogRecordBatchBuilder, SpanRecordBatchBuilder, TraceRecordBatchBuilder},
+    partition::PartitionWriter,
     Log, Process, Trace,
 };
-use arrow_array::RecordBatch;
 use duo_api as proto;
-use parquet::arrow::AsyncArrowWriter;
 
 #[derive(Default)]
 pub struct Warehouse {
@@ -92,6 +91,7 @@ impl Warehouse {
     }
 
     pub(crate) async fn write_parquet(&self) -> anyhow::Result<()> {
+        let pw = PartitionWriter::with_minute();
         let mut trace_record_batch_builder = TraceRecordBatchBuilder::default();
         let mut span_record_batch_builder = SpanRecordBatchBuilder::default();
 
@@ -102,37 +102,17 @@ impl Warehouse {
             }
         }
 
-        write_parquet_file(
-            trace_record_batch_builder.into_record_batch()?,
-            "trace.parquet",
-        )
-        .await?;
-        write_parquet_file(
-            span_record_batch_builder.into_record_batch()?,
-            "spans.parquet",
-        )
-        .await?;
+        pw.write_partition("trace", trace_record_batch_builder.into_record_batch()?)
+            .await?;
+        pw.write_partition("span", span_record_batch_builder.into_record_batch()?)
+            .await?;
 
         let mut log_record_batch_builder = LogRecordBatchBuilder::default();
         for log in &self.logs {
             log_record_batch_builder.append_log(log);
         }
-        write_parquet_file(
-            log_record_batch_builder.into_record_batch()?,
-            "logs.parquet",
-        )
-        .await?;
+        pw.write_partition("log", log_record_batch_builder.into_record_batch()?)
+            .await?;
         Ok(())
     }
-}
-
-async fn write_parquet_file(record_batch: RecordBatch, filename: &str) -> anyhow::Result<()> {
-    let mut file = File::create(filename)?;
-    let mut buffer = vec![];
-    let mut writer = AsyncArrowWriter::try_new(&mut buffer, record_batch.schema(), 0, None)?;
-    writer.write(&record_batch).await?;
-    writer.close().await?;
-
-    file.write_all(buffer.as_slice())?;
-    Ok(())
 }
