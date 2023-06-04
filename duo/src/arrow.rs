@@ -4,16 +4,7 @@ use anyhow::Result;
 use arrow_array::{Int64Array, RecordBatch, StringArray, UInt64Array, UInt8Array};
 use arrow_schema::{DataType, Field, Schema, SchemaRef};
 
-use crate::{Log, Span, Trace};
-
-pub fn schema_trace() -> SchemaRef {
-    Arc::new(Schema::new(vec![
-        Field::new("id", DataType::UInt64, false),
-        Field::new("duration", DataType::Int64, false),
-        Field::new("time", DataType::Int64, false),
-        Field::new("process_id", DataType::Utf8, false),
-    ]))
-}
+use crate::{Log, Span};
 
 pub fn schema_span() -> SchemaRef {
     Arc::new(Schema::new(vec![
@@ -36,14 +27,6 @@ pub fn schema_log() -> SchemaRef {
 }
 
 #[derive(Default)]
-pub struct TraceRecordBatchBuilder {
-    trace_ids: Vec<u64>,
-    process_ids: Vec<String>,
-    durations: Vec<i64>,
-    trace_times: Vec<i64>,
-}
-
-#[derive(Default)]
 pub struct SpanRecordBatchBuilder {
     span_ids: Vec<u64>,
     parent_ids: Vec<Option<u64>>,
@@ -61,33 +44,11 @@ pub struct LogRecordBatchBuilder {
     times: Vec<i64>,
 }
 
-impl TraceRecordBatchBuilder {
-    pub fn append_trace(&mut self, trace: &Trace) {
-        self.trace_ids.push(trace.id.get());
-        self.process_ids.push(trace.process_id.clone());
-        self.durations
-            .push(trace.duration.whole_milliseconds() as i64);
-        self.trace_times.push(trace.time.unix_timestamp());
-    }
-
-    pub fn into_record_batch(self) -> Result<RecordBatch> {
-        Ok(RecordBatch::try_new(
-            schema_trace(),
-            vec![
-                Arc::new(UInt64Array::from(self.trace_ids)),
-                Arc::new(Int64Array::from(self.durations)),
-                Arc::new(Int64Array::from(self.trace_times)),
-                Arc::new(StringArray::from(self.process_ids)),
-            ],
-        )?)
-    }
-}
-
 impl SpanRecordBatchBuilder {
-    pub fn append_span(&mut self, trace_id: NonZeroU64, span: &Span) {
+    pub fn append_span(&mut self, span: &Span) {
         self.span_ids.push(span.id.get());
         self.parent_ids.push(span.parent_id.map(|id| id.get()));
-        self.trace_ids.push(trace_id.get());
+        self.trace_ids.push(span.trace_id.get());
         self.names.push(span.name.clone());
         self.start_times.push(span.start.unix_timestamp());
         self.end_times.push(span.end.map(|t| t.unix_timestamp()));
