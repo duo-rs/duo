@@ -3,9 +3,7 @@ use std::{
     num::NonZeroU64,
 };
 
-use tracing::Level;
-
-use crate::{Process, TraceExt, Warehouse};
+use crate::{Process, Span, TraceExt, Warehouse};
 
 use super::routes::QueryParameters;
 
@@ -19,104 +17,112 @@ impl<'a> TraceQuery<'a> {
     }
 
     pub(super) fn filter_traces(&self, p: QueryParameters) -> Vec<TraceExt> {
-        let traces = self.0.traces();
-        let logs = self.0.logs();
-        let span_log_map = self.0.span_log_map();
-
         let processes = self.processes();
         let process_prefix = format!("{}:", p.service);
         let limit = p.limit.unwrap_or(DEFAUT_TRACE_LIMIT);
+        // <trace_id, spans>
+        let mut traces = HashMap::<NonZeroU64, Vec<&Span>>::new();
+        for span in self.0.spans() {
+            if traces.contains_key(&span.trace_id) {
+                traces
+                    .entry(span.trace_id)
+                    .and_modify(|spans| spans.push(span))
+                    .or_insert_with(Vec::new);
+                continue;
+            }
+
+            if !span.process_id.starts_with(&process_prefix) {
+                continue;
+            }
+            if let Some(span_name) = p.operation.as_ref() {
+                if &*span.name != span_name {
+                    continue;
+                }
+            }
+
+            if span.parent_id.is_some() {
+                continue;
+            }
+
+            match (p.start, p.end) {
+                (Some(start), None) if span.start < start => continue,
+                (None, Some(end)) if span.start > end => continue,
+                (Some(start), Some(end)) if span.start < start || span.start > end => continue,
+                _ => {}
+            }
+
+            let duration = span.duration();
+            match (p.min_duration, p.max_duration) {
+                (Some(min), None) if duration < min => continue,
+                (None, Some(max)) if duration > max => continue,
+                (Some(min), Some(max)) if duration < min || duration > max => continue,
+                _ => {}
+            }
+
+            traces
+                .entry(span.trace_id)
+                .and_modify(|spans| spans.push(span))
+                .or_insert_with(Vec::new);
+        }
+
         traces
-            .values()
-            .filter(|trace| {
-                if !trace.process_id.starts_with(&process_prefix) {
-                    return false;
-                }
-
-                if let Some(span_name) = p.operation.as_ref() {
-                    if !trace.spans.iter().any(|span| &*span.name == span_name) {
-                        return false;
-                    }
-                }
-
-                match (p.start, p.end) {
-                    (Some(start), None) if trace.time < start => return false,
-                    (None, Some(end)) if trace.time > end => return false,
-                    (Some(start), Some(end)) if trace.time < start || trace.time > end => {
-                        return false
-                    }
-                    _ => {}
-                }
-
-                match (p.min_duration, p.max_duration) {
-                    (Some(min), None) if trace.duration < min => return false,
-                    (None, Some(max)) if trace.duration > max => return false,
-                    (Some(min), Some(max)) if trace.duration < min || trace.duration > max => {
-                        return false
-                    }
-                    _ => {}
-                }
-
-                true
-            })
+            .into_iter()
             .take(limit)
-            .cloned()
-            .map(|mut trace| {
-                trace.spans = trace
-                    .spans
-                    .into_iter()
-                    .map(|mut span| {
-                        if let Some(idxs) = span_log_map.get(&span.id) {
-                            let mut errors = 0;
-                            span.logs = idxs
-                                .iter()
-                                .filter_map(|idx| logs.get(*idx))
-                                .inspect(|log| errors += (log.level == Level::ERROR) as i32)
-                                .cloned()
-                                .collect();
-
-                            // Auto insert 'error = true' tag, this will help Jaeger UI show error icon.
-                            if errors > 0 {
-                                span.tags.insert("error".into(), true.into());
-                            }
-                        }
+            .map(|(trace_id, spans)| TraceExt {
+                trace_id,
+                spans: spans
+                    .iter()
+                    .map(|&span| {
+                        let mut span = span.clone();
+                        self.0.correlate_span_logs(&mut span);
                         span
                     })
-                    .collect();
-                TraceExt {
-                    inner: trace,
-                    processes: processes.clone(),
-                }
+                    .collect(),
+                processes: processes.clone(),
             })
             .collect()
     }
 
     pub(super) fn span_names(&self, service: &str) -> HashSet<String> {
         let process_prefix = format!("{}:", service);
+
         self.0
-            .traces()
-            .values()
-            .filter(|trace| trace.process_id.starts_with(&process_prefix))
-            .flat_map(|trace| {
-                trace
-                    .spans
-                    .iter()
-                    .map(|span| span.name.clone())
-                    .collect::<HashSet<_>>()
+            .spans()
+            .iter()
+            .filter_map(|span| {
+                if span.process_id.starts_with(&process_prefix) {
+                    Some(span.name.clone())
+                } else {
+                    None
+                }
             })
             .collect()
     }
 
-    pub(super) fn get_trace_by_id(&self, trace_id: &NonZeroU64) -> Option<TraceExt> {
+    pub(super) fn get_trace_by_id(&self, trace_id: NonZeroU64) -> Option<TraceExt> {
         let processes = self.processes();
-        self.0
-            .traces()
-            .get(trace_id)
+        let spans = self
+            .0
+            .spans()
+            .iter()
+            .filter(|span| span.trace_id == trace_id)
             .cloned()
-            .map(|trace| TraceExt {
-                inner: trace,
+            .collect::<Vec<_>>();
+        if spans.is_empty() {
+            None
+        } else {
+            Some(TraceExt {
+                trace_id,
+                spans: spans
+                    .into_iter()
+                    .map(|mut span| {
+                        self.0.correlate_span_logs(&mut span);
+                        span
+                    })
+                    .collect(),
                 processes,
             })
+        }
     }
 
     pub(super) fn processes(&self) -> HashMap<String, Process> {

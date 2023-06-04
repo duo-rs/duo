@@ -1,10 +1,5 @@
 use duo_api as proto;
-use std::{
-    collections::{HashMap, HashSet},
-    hash::Hash,
-    num::NonZeroU64,
-    time::SystemTime,
-};
+use std::{collections::HashMap, hash::Hash, num::NonZeroU64, time::SystemTime};
 use time::{Duration, OffsetDateTime};
 use tracing::Level;
 
@@ -16,18 +11,11 @@ pub struct Process {
 }
 
 #[derive(Debug, Clone)]
-pub struct Trace {
-    pub id: NonZeroU64,
-    pub duration: Duration,
-    pub time: OffsetDateTime,
-    pub spans: HashSet<Span>,
-    pub process_id: String,
-}
-
-#[derive(Debug, Clone)]
 pub struct Span {
     pub id: NonZeroU64,
+    pub trace_id: NonZeroU64,
     pub parent_id: Option<NonZeroU64>,
+    pub process_id: String,
     pub name: String,
     pub start: OffsetDateTime,
     pub end: Option<OffsetDateTime>,
@@ -50,7 +38,8 @@ pub struct Log {
 
 #[derive(Debug)]
 pub struct TraceExt {
-    pub inner: Trace,
+    pub trace_id: NonZeroU64,
+    pub spans: Vec<Span>,
     pub processes: HashMap<String, Process>,
 }
 
@@ -86,21 +75,19 @@ impl Span {
     }
 }
 
-impl Trace {
+impl Log {
     pub fn as_micros(&self) -> i64 {
         (self.time.unix_timestamp_nanos() / 1000) as i64
     }
+}
 
-    /// Check the trace is intact or not.
-    /// The trace is intact only if all of spans inside the trace is intact.
-    pub fn is_intact(&self) -> bool {
-        self.spans.iter().all(|span| span.is_intact())
-    }
-
-    pub fn merge_span(&mut self, raw: &proto::Span) {
+impl From<&proto::Span> for Span {
+    fn from(raw: &proto::Span) -> Self {
         let mut span = Span {
             id: NonZeroU64::new(raw.id).expect("Span id cann not be 0"),
+            trace_id: NonZeroU64::new(raw.trace_id).expect("Trace id cann not be 0"),
             parent_id: raw.parent_id.and_then(NonZeroU64::new),
+            process_id: raw.process_id.clone(),
             name: raw.name.clone(),
             start: raw
                 .start
@@ -123,13 +110,6 @@ impl Trace {
             tags: raw.tags.clone(),
             logs: Vec::new(),
         };
-        // Determine the trace duration.
-        // Trace's duration should be the first span's duration (with longest duration in the trace).
-        self.duration = self.duration.max(span.duration());
-        // Determine the trace time.
-        // Trace's time should be the first span's time (with earliest time in the trace).
-        self.time = self.time.min(span.start);
-        // Make busy and idle tags human readable.
         for key in ["@busy", "@idle"] {
             if let Some(proto::Value {
                 inner: Some(proto::ValueEnum::U64Val(value)),
@@ -139,14 +119,7 @@ impl Trace {
                     .insert(key.into(), format_timing_value(value).into());
             }
         }
-
-        self.spans.replace(span);
-    }
-}
-
-impl Log {
-    pub fn as_micros(&self) -> i64 {
-        (self.time.unix_timestamp_nanos() / 1000) as i64
+        span
     }
 }
 

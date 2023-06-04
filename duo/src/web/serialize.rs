@@ -133,19 +133,17 @@ impl Serialize for TraceExt {
     where
         S: Serializer,
     {
-        let trace = &self.inner;
-
         let mut map = serializer.serialize_map(Some(4))?;
-        map.serialize_entry("traceID", &trace.id.to_string())?;
+        map.serialize_entry("traceID", &self.trace_id.to_string())?;
         map.serialize_entry(
             "spans",
-            &trace
+            &self
                 .spans
                 .iter()
                 .map(|span| SpanExt {
-                    trace_id: trace.id,
+                    trace_id: span.trace_id,
                     inner: span,
-                    process_id: &trace.process_id,
+                    process_id: &span.process_id,
                 })
                 .collect::<Vec<_>>(),
         )?;
