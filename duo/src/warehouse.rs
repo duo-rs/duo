@@ -43,10 +43,6 @@ impl Warehouse {
         &self.spans
     }
 
-    pub(crate) fn logs(&self) -> &Vec<Log> {
-        &self.logs
-    }
-
     pub(crate) fn correlate_span_logs(&self, span: &mut Span) {
         if let Some(idxs) = self.span_log_map.get(&span.id) {
             let mut errors = 0;

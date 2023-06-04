@@ -50,8 +50,10 @@ impl SpanRecordBatchBuilder {
         self.parent_ids.push(span.parent_id.map(|id| id.get()));
         self.trace_ids.push(span.trace_id.get());
         self.names.push(span.name.clone());
-        self.start_times.push(span.start.unix_timestamp());
-        self.end_times.push(span.end.map(|t| t.unix_timestamp()));
+        self.start_times
+            .push((span.start.unix_timestamp_nanos() / 1000) as i64);
+        self.end_times
+            .push(span.end.map(|t| (t.unix_timestamp_nanos() / 1000) as i64));
     }
 
     pub fn into_record_batch(self) -> Result<RecordBatch> {
@@ -74,7 +76,8 @@ impl LogRecordBatchBuilder {
         self.span_ids.push(log.span_id.map(NonZeroU64::get));
         self.trace_ids.push(log.trace_id.map(NonZeroU64::get));
         self.levels.push(1);
-        self.times.push(log.time.unix_timestamp());
+        self.times
+            .push((log.time.unix_timestamp_nanos() / 1000) as i64);
     }
 
     pub fn into_record_batch(self) -> Result<RecordBatch> {

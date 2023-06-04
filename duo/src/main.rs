@@ -11,6 +11,7 @@ mod arrow;
 mod grpc;
 mod models;
 mod partition;
+mod query;
 mod warehouse;
 mod web;
 

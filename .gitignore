@@ -13,3 +13,4 @@ Cargo.lock
 # duo/ui
 
 *.parquet
+.history
