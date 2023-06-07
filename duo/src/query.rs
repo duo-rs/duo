@@ -9,12 +9,13 @@ use datafusion::{
     },
     prelude::{Expr, SessionContext},
 };
+use serde_json::Value;
 use time::OffsetDateTime;
+
+use crate::{arrow::schema_span, utils::TimePeriod};
 
 pub struct PartitionQuery {
     ctx: SessionContext,
-    start: OffsetDateTime,
-    end: OffsetDateTime,
     root_path: PathBuf,
     prefixes: Vec<String>,
 }
@@ -24,10 +25,8 @@ impl PartitionQuery {
         let ctx = SessionContext::new();
         PartitionQuery {
             ctx,
-            start,
-            end,
             root_path,
-            prefixes: vec![],
+            prefixes: TimePeriod::new(start, end, 1).generate_prefixes(),
         }
     }
 
@@ -48,13 +47,40 @@ impl PartitionQuery {
         .with_file_extension(".parquet");
         let listing_table_config =
             ListingTableConfig::new_with_multi_paths(self.table_paths(table_name))
+                .with_schema(schema_span())
                 .with_listing_options(listing_options);
         Ok(Arc::new(ListingTable::try_new(listing_table_config)?))
     }
 
-    pub async fn query_span(&self, expr: Expr) -> Result<()> {
+    pub async fn query_span(&self, expr: Expr) -> Result<Vec<Value>> {
         let df = self.ctx.read_table(self.get_table("span")?)?;
-        let batch = df.collect().await?;
-        todo!()
+        let batch = df.filter(expr)?.collect().await?;
+        let json_values = arrow_json::writer::record_batches_to_json_rows(&batch)?
+            .into_iter()
+            .map(Value::Object)
+            .collect::<Vec<_>>();
+        Ok(json_values)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use time::format_description::well_known::Rfc3339;
+
+    use super::*;
+    use datafusion::prelude::*;
+
+    #[tokio::test]
+    async fn test_query() {
+        let query = PartitionQuery::new(
+            ".".into(),
+            OffsetDateTime::parse("2023-06-04T14:45:00+00:00", &Rfc3339).unwrap(),
+            OffsetDateTime::parse("2023-06-04T14:46:00+00:00", &Rfc3339).unwrap(),
+        );
+        let v = query
+            .query_span(col("trace_id").eq(lit("15427617998887099000")))
+            .await
+            .unwrap();
+        assert!(v.len() == 8);
     }
 }
