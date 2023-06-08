@@ -14,7 +14,7 @@ struct SpanExt<'a> {
     process_id: &'a String,
 }
 
-struct KvFields<'a>(&'a String, &'a proto::Value);
+pub struct KvFields<'a>(pub &'a String, pub &'a proto::Value);
 
 struct ReferenceType {
     trace_id: NonZeroU64,

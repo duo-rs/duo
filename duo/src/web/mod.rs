@@ -16,7 +16,7 @@ use crate::Warehouse;
 mod deser;
 mod query;
 mod routes;
-mod serialize;
+pub mod serialize;
 
 // Frontend HTML page.
 static ROOT_PAGE: Html<&'static str> = Html(include_str!("../../ui/index.html"));

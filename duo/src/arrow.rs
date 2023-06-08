@@ -1,28 +1,10 @@
-use datafusion::arrow::{array::ArrayDataBuilder, buffer::Buffer};
 use duo_api as proto;
 use std::{collections::HashMap, num::NonZeroU64, sync::Arc};
 
 use crate::{Log, Span};
 use anyhow::Result;
-use arrow_array::{
-    Array, ArrayRef, Int64Array, MapArray, RecordBatch, StringArray, StructArray, UInt64Array,
-    UInt8Array,
-};
-use arrow_schema::{DataType, Field, Fields, Schema, SchemaRef};
-
-fn datatype_map() -> DataType {
-    DataType::Map(
-        Arc::new(Field::new(
-            "entries",
-            DataType::Struct(Fields::from(vec![
-                Field::new("keys", DataType::Utf8, false),
-                Field::new("values", DataType::Utf8, false),
-            ])),
-            false,
-        )),
-        false,
-    )
-}
+use arrow_array::{Int64Array, RecordBatch, StringArray, UInt64Array, UInt8Array};
+use arrow_schema::{DataType, Field, Schema, SchemaRef};
 
 pub fn schema_span() -> SchemaRef {
     Arc::new(Schema::new(vec![
@@ -33,7 +15,7 @@ pub fn schema_span() -> SchemaRef {
         Field::new("process_id", DataType::Utf8, false),
         Field::new("start", DataType::Int64, false),
         Field::new("end", DataType::Int64, true),
-        Field::new("tags", datatype_map(), true),
+        Field::new("tags", DataType::Utf8, true),
     ]))
 }
 
@@ -43,7 +25,7 @@ pub fn schema_log() -> SchemaRef {
         Field::new("trace_id", DataType::UInt64, true),
         Field::new("level", DataType::UInt8, false),
         Field::new("time", DataType::Int64, false),
-        Field::new("fields", datatype_map(), true),
+        Field::new("fields", DataType::Utf8, true),
     ]))
 }
 
@@ -97,7 +79,7 @@ impl SpanRecordBatchBuilder {
                 Arc::new(StringArray::from(self.process_ids)),
                 Arc::new(Int64Array::from(self.start_times)),
                 Arc::new(Int64Array::from(self.end_times)),
-                build_map_array(self.tags_list)?,
+                build_field_array(&self.tags_list),
             ],
         )?)
     }
@@ -125,46 +107,22 @@ impl LogRecordBatchBuilder {
                 Arc::new(UInt64Array::from(self.trace_ids)),
                 Arc::new(UInt8Array::from(self.levels)),
                 Arc::new(Int64Array::from(self.times)),
-                build_map_array(self.fields_list)?,
+                build_field_array(&self.fields_list),
             ],
         )?)
     }
 }
 
-fn build_map_array(list: Vec<HashMap<String, proto::Value>>) -> Result<Arc<MapArray>> {
-    let mut entry_offset = vec![];
-    let mut keys = vec![];
-    let mut values = vec![];
-
-    let mut offset = 0;
-    for kv in list {
-        entry_offset.push(offset as u64);
-        offset += kv.len();
-
-        for (key, value) in kv {
-            keys.push(key);
-            values.push(format!("{}:{}", value.type_name(), value));
-        }
-    }
-    println!("offset list: {:?}", entry_offset);
-
-    let map_data = ArrayDataBuilder::new(datatype_map())
-        .len(3)
-        .add_buffer(Buffer::from_vec(entry_offset))
-        .add_child_data(
-            StructArray::from(vec![
-                (
-                    Arc::new(Field::new("keys", DataType::Utf8, false)),
-                    Arc::new(StringArray::from(keys)) as ArrayRef,
-                ),
-                (
-                    Arc::new(Field::new("values", DataType::Utf8, false)),
-                    Arc::new(StringArray::from(values)) as ArrayRef,
-                ),
-            ])
-            .into_data(),
-        )
-        .build()?;
-
-    Ok(Arc::new(MapArray::from(map_data)))
+fn build_field_array(list: &[HashMap<String, proto::Value>]) -> Arc<StringArray> {
+    Arc::new(StringArray::from(
+        list.into_iter()
+            .map(|map| {
+                let fields = map
+                    .iter()
+                    .map(|(key, value)| crate::web::serialize::KvFields(key, value))
+                    .collect::<Vec<_>>();
+                serde_json::to_string(&fields).unwrap()
+            })
+            .collect::<Vec<_>>(),
+    ))
 }
