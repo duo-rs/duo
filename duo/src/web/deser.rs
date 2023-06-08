@@ -80,6 +80,16 @@ impl<'de> de::Visitor<'de> for MicroSecondsTimestampVisitor {
         )
     }
 
+    fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        Ok(
+            OffsetDateTime::from_unix_timestamp_nanos((v * 1000) as i128)
+                .expect("invalid timestamp format"),
+        )
+    }
+
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: de::Error,
