@@ -3,7 +3,7 @@ use std::{collections::HashMap, num::NonZeroU64, sync::Arc};
 
 use crate::{Log, Span};
 use anyhow::Result;
-use arrow_array::{Int64Array, RecordBatch, StringArray, UInt64Array, UInt8Array};
+use arrow_array::{Int64Array, RecordBatch, StringArray, UInt64Array};
 use arrow_schema::{DataType, Field, Schema, SchemaRef};
 
 pub fn schema_span() -> SchemaRef {
@@ -23,7 +23,7 @@ pub fn schema_log() -> SchemaRef {
     Arc::new(Schema::new(vec![
         Field::new("span_id", DataType::UInt64, true),
         Field::new("trace_id", DataType::UInt64, true),
-        Field::new("level", DataType::UInt8, false),
+        Field::new("level", DataType::Utf8, false),
         Field::new("time", DataType::Int64, false),
         Field::new("fields", DataType::Utf8, true),
     ]))
@@ -45,7 +45,7 @@ pub struct SpanRecordBatchBuilder {
 pub struct LogRecordBatchBuilder {
     span_ids: Vec<Option<u64>>,
     trace_ids: Vec<Option<u64>>,
-    levels: Vec<u8>,
+    levels: Vec<&'static str>,
     times: Vec<i64>,
     fields_list: Vec<HashMap<String, proto::Value>>,
 }
@@ -89,7 +89,7 @@ impl LogRecordBatchBuilder {
     pub fn append_log(&mut self, log: &Log) {
         self.span_ids.push(log.span_id.map(NonZeroU64::get));
         self.trace_ids.push(log.trace_id.map(NonZeroU64::get));
-        self.levels.push(1);
+        self.levels.push(log.level.as_str());
         self.times
             .push((log.time.unix_timestamp_nanos() / 1000) as i64);
         self.fields_list.push(log.fields.clone());
@@ -105,7 +105,7 @@ impl LogRecordBatchBuilder {
             vec![
                 Arc::new(UInt64Array::from(self.span_ids)),
                 Arc::new(UInt64Array::from(self.trace_ids)),
-                Arc::new(UInt8Array::from(self.levels)),
+                Arc::new(StringArray::from(self.levels)),
                 Arc::new(Int64Array::from(self.times)),
                 build_field_array(&self.fields_list),
             ],
