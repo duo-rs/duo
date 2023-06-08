@@ -53,10 +53,10 @@ impl Warehouse {
                 .cloned()
                 .collect();
 
-            // Auto insert 'error = true' tag, this will help Jaeger UI show error icon.
-            if errors > 0 {
-                span.tags.insert("error".into(), true.into());
-            }
+            // TODO: Auto insert 'error = true' tag, this will help Jaeger UI show error icon.
+            // if errors > 0 {
+            //     span.tags.insert("error".into(), true.into());
+            // }
         }
     }
 

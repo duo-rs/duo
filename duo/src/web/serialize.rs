@@ -111,13 +111,7 @@ impl<'a> Serialize for SpanExt<'a> {
         }
         map.serialize_entry("startTime", &span.as_micros())?;
         map.serialize_entry("duration", &span.duration().whole_microseconds())?;
-
-        let tags: Vec<_> = span
-            .tags
-            .iter()
-            .map(|(key, value)| KvFields(key, value))
-            .collect();
-        map.serialize_entry("tags", &tags)?;
+        map.serialize_entry("tags", &span.tags)?;
         map.serialize_entry("logs", &span.logs)?;
 
         map.serialize_entry("processID", &self.process_id)?;

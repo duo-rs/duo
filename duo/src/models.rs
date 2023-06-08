@@ -1,8 +1,9 @@
+use crate::web::deser;
 use duo_api as proto;
+use serde::Deserialize;
 use std::{collections::HashMap, hash::Hash, num::NonZeroU64, time::SystemTime};
 use time::{Duration, OffsetDateTime};
 use tracing::Level;
-
 #[derive(Debug, Clone)]
 pub struct Process {
     pub id: String,
@@ -10,16 +11,19 @@ pub struct Process {
     pub tags: HashMap<String, proto::Value>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Span {
     pub id: NonZeroU64,
     pub trace_id: NonZeroU64,
     pub parent_id: Option<NonZeroU64>,
     pub process_id: String,
     pub name: String,
+    #[serde(deserialize_with = "deser::miscrosecond")]
     pub start: OffsetDateTime,
+    #[serde(default, deserialize_with = "deser::option_miscrosecond")]
     pub end: Option<OffsetDateTime>,
-    pub tags: HashMap<String, proto::Value>,
+    pub tags: serde_json::Value,
+    #[serde(skip_deserializing)]
     pub logs: Vec<Log>,
 }
 
@@ -83,7 +87,22 @@ impl Log {
 
 impl From<&proto::Span> for Span {
     fn from(raw: &proto::Span) -> Self {
-        let mut span = Span {
+        let mut tags = raw.tags.clone();
+        for key in ["@busy", "@idle"] {
+            if let Some(proto::Value {
+                inner: Some(proto::ValueEnum::U64Val(value)),
+            }) = tags.remove(key)
+            {
+                tags.insert(key.into(), format_timing_value(value).into());
+            }
+        }
+
+        let fields = tags
+            .iter()
+            .map(|(key, value)| crate::web::serialize::KvFields(key, value))
+            .collect::<Vec<_>>();
+
+        Span {
             id: NonZeroU64::new(raw.id).expect("Span id cann not be 0"),
             trace_id: NonZeroU64::new(raw.trace_id).expect("Trace id cann not be 0"),
             parent_id: raw.parent_id.and_then(NonZeroU64::new),
@@ -107,19 +126,9 @@ impl From<&proto::Span> for Span {
                         .map(OffsetDateTime::from)
                 })
                 .or_else(|| Some(OffsetDateTime::now_utc())),
-            tags: raw.tags.clone(),
+            tags: serde_json::to_value(&fields).unwrap(),
             logs: Vec::new(),
-        };
-        for key in ["@busy", "@idle"] {
-            if let Some(proto::Value {
-                inner: Some(proto::ValueEnum::U64Val(value)),
-            }) = span.tags.remove(key)
-            {
-                span.tags
-                    .insert(key.into(), format_timing_value(value).into());
-            }
         }
-        span
     }
 }
 

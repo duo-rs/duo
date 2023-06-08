@@ -9,11 +9,18 @@ where
     Ok(T::deserialize(d).ok())
 }
 
-pub(super) fn option_miscrosecond<'de, D>(d: D) -> Result<Option<OffsetDateTime>, D::Error>
+pub fn option_miscrosecond<'de, D>(d: D) -> Result<Option<OffsetDateTime>, D::Error>
 where
     D: de::Deserializer<'de>,
 {
     d.deserialize_option(OptionMicroSecondsTimestampVisitor)
+}
+
+pub fn miscrosecond<'de, D>(d: D) -> Result<OffsetDateTime, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    d.deserialize_any(MicroSecondsTimestampVisitor)
 }
 
 pub(super) fn option_duration<'de, D>(d: D) -> Result<Option<Duration>, D::Error>

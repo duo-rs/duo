@@ -13,7 +13,7 @@ use tower_http::services::ServeDir;
 
 use crate::Warehouse;
 
-mod deser;
+pub mod deser;
 mod query;
 mod routes;
 pub mod serialize;

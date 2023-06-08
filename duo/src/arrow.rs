@@ -38,7 +38,7 @@ pub struct SpanRecordBatchBuilder {
     process_ids: Vec<String>,
     start_times: Vec<i64>,
     end_times: Vec<Option<i64>>,
-    tags_list: Vec<HashMap<String, proto::Value>>,
+    tags_list: Vec<String>,
 }
 
 #[derive(Default)]
@@ -61,7 +61,8 @@ impl SpanRecordBatchBuilder {
             .push((span.start.unix_timestamp_nanos() / 1000) as i64);
         self.end_times
             .push(span.end.map(|t| (t.unix_timestamp_nanos() / 1000) as i64));
-        self.tags_list.push(span.tags.clone());
+        self.tags_list
+            .push(serde_json::to_string(&span.tags).unwrap());
     }
 
     pub fn into_record_batch(self) -> Result<RecordBatch> {
@@ -79,7 +80,7 @@ impl SpanRecordBatchBuilder {
                 Arc::new(StringArray::from(self.process_ids)),
                 Arc::new(Int64Array::from(self.start_times)),
                 Arc::new(Int64Array::from(self.end_times)),
-                build_field_array(&self.tags_list),
+                Arc::new(StringArray::from(self.tags_list)),
             ],
         )?)
     }
