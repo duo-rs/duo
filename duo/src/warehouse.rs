@@ -99,19 +99,23 @@ impl Warehouse {
     pub(crate) async fn write_parquet(&self) -> anyhow::Result<()> {
         let pw = PartitionWriter::with_minute();
 
-        let mut span_record_batch_builder = SpanRecordBatchBuilder::default();
-        for span in &self.spans {
-            span_record_batch_builder.append_span(span);
+        if !self.spans.is_empty() {
+            let mut span_record_batch_builder = SpanRecordBatchBuilder::default();
+            for span in &self.spans {
+                span_record_batch_builder.append_span(span);
+            }
+            pw.write_partition("span", span_record_batch_builder.into_record_batch()?)
+                .await?;
         }
-        pw.write_partition("span", span_record_batch_builder.into_record_batch()?)
-            .await?;
 
-        let mut log_record_batch_builder = LogRecordBatchBuilder::default();
-        for log in &self.logs {
-            log_record_batch_builder.append_log(log);
+        if !self.logs.is_empty() {
+            let mut log_record_batch_builder = LogRecordBatchBuilder::default();
+            for log in &self.logs {
+                log_record_batch_builder.append_log(log);
+            }
+            pw.write_partition("log", log_record_batch_builder.into_record_batch()?)
+                .await?;
         }
-        pw.write_partition("log", log_record_batch_builder.into_record_batch()?)
-            .await?;
         Ok(())
     }
 }

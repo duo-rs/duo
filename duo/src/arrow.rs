@@ -1,12 +1,14 @@
-use datafusion::arrow::array::ArrayDataBuilder;
+use datafusion::arrow::{array::ArrayDataBuilder, buffer::Buffer};
 use duo_api as proto;
 use std::{collections::HashMap, num::NonZeroU64, sync::Arc};
 
-use anyhow::Result;
-use arrow_array::{Int64Array, MapArray, RecordBatch, StringArray, UInt64Array, UInt8Array};
-use arrow_schema::{DataType, Field, Fields, Schema, SchemaRef};
-
 use crate::{Log, Span};
+use anyhow::Result;
+use arrow_array::{
+    Array, ArrayRef, Int64Array, MapArray, RecordBatch, StringArray, StructArray, UInt64Array,
+    UInt8Array,
+};
+use arrow_schema::{DataType, Field, Fields, Schema, SchemaRef};
 
 fn datatype_map() -> DataType {
     DataType::Map(
@@ -14,7 +16,7 @@ fn datatype_map() -> DataType {
             "entries",
             DataType::Struct(Fields::from(vec![
                 Field::new("keys", DataType::Utf8, false),
-                Field::new("values", DataType::UInt32, false),
+                Field::new("values", DataType::Utf8, false),
             ])),
             false,
         )),
@@ -41,6 +43,7 @@ pub fn schema_log() -> SchemaRef {
         Field::new("trace_id", DataType::UInt64, true),
         Field::new("level", DataType::UInt8, false),
         Field::new("time", DataType::Int64, false),
+        Field::new("fields", datatype_map(), true),
     ]))
 }
 
@@ -53,7 +56,7 @@ pub struct SpanRecordBatchBuilder {
     process_ids: Vec<String>,
     start_times: Vec<i64>,
     end_times: Vec<Option<i64>>,
-    tags: Vec<HashMap<String, proto::Value>>,
+    tags_list: Vec<HashMap<String, proto::Value>>,
 }
 
 #[derive(Default)]
@@ -62,6 +65,7 @@ pub struct LogRecordBatchBuilder {
     trace_ids: Vec<Option<u64>>,
     levels: Vec<u8>,
     times: Vec<i64>,
+    fields_list: Vec<HashMap<String, proto::Value>>,
 }
 
 impl SpanRecordBatchBuilder {
@@ -75,12 +79,14 @@ impl SpanRecordBatchBuilder {
             .push((span.start.unix_timestamp_nanos() / 1000) as i64);
         self.end_times
             .push(span.end.map(|t| (t.unix_timestamp_nanos() / 1000) as i64));
-        self.tags.push(span.tags.clone());
+        self.tags_list.push(span.tags.clone());
     }
 
     pub fn into_record_batch(self) -> Result<RecordBatch> {
-        let map_data = ArrayDataBuilder::new(datatype_map()).build()?;
-        // TODO tags map
+        if self.span_ids.is_empty() {
+            return Ok(RecordBatch::new_empty(schema_span()));
+        }
+
         Ok(RecordBatch::try_new(
             schema_span(),
             vec![
@@ -91,7 +97,7 @@ impl SpanRecordBatchBuilder {
                 Arc::new(StringArray::from(self.process_ids)),
                 Arc::new(Int64Array::from(self.start_times)),
                 Arc::new(Int64Array::from(self.end_times)),
-                Arc::new(MapArray::from(map_data)),
+                build_map_array(self.tags_list)?,
             ],
         )?)
     }
@@ -104,9 +110,14 @@ impl LogRecordBatchBuilder {
         self.levels.push(1);
         self.times
             .push((log.time.unix_timestamp_nanos() / 1000) as i64);
+        self.fields_list.push(log.fields.clone());
     }
 
     pub fn into_record_batch(self) -> Result<RecordBatch> {
+        if self.times.is_empty() {
+            return Ok(RecordBatch::new_empty(schema_log()));
+        }
+
         Ok(RecordBatch::try_new(
             schema_log(),
             vec![
@@ -114,7 +125,46 @@ impl LogRecordBatchBuilder {
                 Arc::new(UInt64Array::from(self.trace_ids)),
                 Arc::new(UInt8Array::from(self.levels)),
                 Arc::new(Int64Array::from(self.times)),
+                build_map_array(self.fields_list)?,
             ],
         )?)
     }
+}
+
+fn build_map_array(list: Vec<HashMap<String, proto::Value>>) -> Result<Arc<MapArray>> {
+    let mut entry_offset = vec![];
+    let mut keys = vec![];
+    let mut values = vec![];
+
+    let mut offset = 0;
+    for kv in list {
+        entry_offset.push(offset as u64);
+        offset += kv.len();
+
+        for (key, value) in kv {
+            keys.push(key);
+            values.push(format!("{}:{}", value.type_name(), value));
+        }
+    }
+    println!("offset list: {:?}", entry_offset);
+
+    let map_data = ArrayDataBuilder::new(datatype_map())
+        .len(3)
+        .add_buffer(Buffer::from_vec(entry_offset))
+        .add_child_data(
+            StructArray::from(vec![
+                (
+                    Arc::new(Field::new("keys", DataType::Utf8, false)),
+                    Arc::new(StringArray::from(keys)) as ArrayRef,
+                ),
+                (
+                    Arc::new(Field::new("values", DataType::Utf8, false)),
+                    Arc::new(StringArray::from(values)) as ArrayRef,
+                ),
+            ])
+            .into_data(),
+        )
+        .build()?;
+
+    Ok(Arc::new(MapArray::from(map_data)))
 }
