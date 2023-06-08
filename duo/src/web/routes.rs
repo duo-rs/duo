@@ -39,7 +39,7 @@ pub(super) async fn traces(
 ) -> impl IntoResponse {
     let warehouse = warehouse.read();
     Json(JaegerData(
-        TraceQuery::new(&warehouse).filter_traces(parameters),
+        TraceQuery::new(&warehouse).filter_traces(parameters).await,
     ))
 }
 

@@ -116,7 +116,7 @@ impl LogRecordBatchBuilder {
 
 fn build_field_array(list: &[HashMap<String, proto::Value>]) -> Arc<StringArray> {
     Arc::new(StringArray::from(
-        list.into_iter()
+        list.iter()
             .map(|map| {
                 let fields = map
                     .iter()

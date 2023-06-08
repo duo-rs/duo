@@ -1,9 +1,12 @@
+use crate::query::PartitionQuery;
+use crate::{Process, Span, TraceExt, Warehouse};
+use datafusion::prelude::*;
+use std::borrow::Cow;
+use std::vec;
 use std::{
     collections::{HashMap, HashSet},
     num::NonZeroU64,
 };
-
-use crate::{Process, Span, TraceExt, Warehouse};
 
 use super::routes::QueryParameters;
 
@@ -16,13 +19,24 @@ impl<'a> TraceQuery<'a> {
         TraceQuery(warehouse)
     }
 
-    pub(super) fn filter_traces(&self, p: QueryParameters) -> Vec<TraceExt> {
+    pub(super) async fn filter_traces(&self, p: QueryParameters) -> Vec<TraceExt> {
         let processes = self.processes();
         let process_prefix = format!("{}:", p.service);
         let limit = p.limit.unwrap_or(DEFAUT_TRACE_LIMIT);
         // <trace_id, spans>
-        let mut traces = HashMap::<NonZeroU64, Vec<&Span>>::new();
-        for span in self.0.spans() {
+        let mut traces = HashMap::<NonZeroU64, Vec<Cow<Span>>>::new();
+        let pq = PartitionQuery::new(".".into(), p.start.unwrap(), p.end.unwrap());
+        let expr = col("process_id").like(lit(format!("{process_prefix}%")));
+        let spans = pq
+            .query_span(expr)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|value| Cow::<Span>::Owned(serde_json::from_value::<Span>(value).unwrap()));
+        println!("spans from parquet: {}", spans.len());
+        let mut total_spans = vec![];
+        total_spans.extend(self.0.spans().iter().map(Cow::Borrowed));
+        for span in spans {
             if traces.contains_key(&span.trace_id) {
                 traces
                     .entry(span.trace_id)
@@ -72,8 +86,8 @@ impl<'a> TraceQuery<'a> {
                 trace_id,
                 spans: spans
                     .iter()
-                    .map(|&span| {
-                        let mut span = span.clone();
+                    .map(|span| {
+                        let mut span = span.clone().into_owned();
                         self.0.correlate_span_logs(&mut span);
                         span
                     })

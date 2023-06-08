@@ -126,7 +126,7 @@ impl From<&proto::Span> for Span {
                         .map(OffsetDateTime::from)
                 })
                 .or_else(|| Some(OffsetDateTime::now_utc())),
-            tags: serde_json::to_value(&fields).unwrap(),
+            tags: serde_json::to_value(fields).unwrap(),
             logs: Vec::new(),
         }
     }
