@@ -51,12 +51,12 @@ pub struct LogRecordBatchBuilder {
 }
 
 impl SpanRecordBatchBuilder {
-    pub fn append_span(&mut self, span: &Span) {
+    pub fn append_span(&mut self, span: Span) {
         self.span_ids.push(span.id.get());
         self.parent_ids.push(span.parent_id.map(|id| id.get()));
         self.trace_ids.push(span.trace_id.get());
-        self.names.push(span.name.clone());
-        self.process_ids.push(span.process_id.clone());
+        self.names.push(span.name);
+        self.process_ids.push(span.process_id);
         self.start_times
             .push((span.start.unix_timestamp_nanos() / 1000) as i64);
         self.end_times
@@ -87,13 +87,13 @@ impl SpanRecordBatchBuilder {
 }
 
 impl LogRecordBatchBuilder {
-    pub fn append_log(&mut self, log: &Log) {
+    pub fn append_log(&mut self, log: Log) {
         self.span_ids.push(log.span_id.map(NonZeroU64::get));
         self.trace_ids.push(log.trace_id.map(NonZeroU64::get));
         self.levels.push(log.level.as_str());
         self.times
             .push((log.time.unix_timestamp_nanos() / 1000) as i64);
-        self.fields_list.push(log.fields.clone());
+        self.fields_list.push(log.fields);
     }
 
     pub fn into_record_batch(self) -> Result<RecordBatch> {

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, num::NonZeroU64};
+use std::{collections::HashMap, mem, num::NonZeroU64};
 
 use crate::{
     aggregator::AggregatedData,
@@ -100,12 +100,12 @@ impl Warehouse {
         });
     }
 
-    pub(crate) async fn write_parquet(&self) -> anyhow::Result<()> {
+    pub(crate) async fn write_parquet(&mut self) -> anyhow::Result<()> {
         let pw = PartitionWriter::with_minute();
 
         if !self.spans.is_empty() {
             let mut span_record_batch_builder = SpanRecordBatchBuilder::default();
-            for span in &self.spans {
+            for span in mem::take(&mut self.spans) {
                 span_record_batch_builder.append_span(span);
             }
             pw.write_partition("span", span_record_batch_builder.into_record_batch()?)
@@ -114,7 +114,7 @@ impl Warehouse {
 
         if !self.logs.is_empty() {
             let mut log_record_batch_builder = LogRecordBatchBuilder::default();
-            for log in &self.logs {
+            for log in mem::take(&mut self.logs) {
                 log_record_batch_builder.append_log(log);
             }
             pw.write_partition("log", log_record_batch_builder.into_record_batch()?)

@@ -75,8 +75,20 @@ impl DuoServer {
                 let data = aggregator.write().aggregate();
                 let mut warehouse = warehouse.write();
                 warehouse.merge_data(data);
-                warehouse.write_parquet().await.unwrap();
                 debug!("After merge: {:?}", warehouse);
+            }
+        });
+
+        let warehouse = Arc::clone(&self.warehouse);
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(10));
+            loop {
+                interval.tick().await;
+                let mut warehouse = warehouse.write();
+                warehouse
+                    .write_parquet()
+                    .await
+                    .expect("Write parquet failed");
             }
         });
     }

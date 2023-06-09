@@ -36,7 +36,7 @@ impl<'a> TraceQuery<'a> {
         println!("spans from parquet: {}", spans.len());
         let mut total_spans = vec![];
         total_spans.extend(self.0.spans().iter().map(Cow::Borrowed));
-        for span in spans {
+        for span in total_spans {
             if traces.contains_key(&span.trace_id) {
                 traces
                     .entry(span.trace_id)
