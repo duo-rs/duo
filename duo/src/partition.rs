@@ -14,7 +14,7 @@ impl PartitionWriter {
         let now = OffsetDateTime::now_utc();
         PartitionWriter {
             partition_path: format!(
-                "date={}/hour={}/minute={}",
+                "date={}/hour={:02}/minute={:02}",
                 now.date(),
                 now.hour(),
                 now.minute()
