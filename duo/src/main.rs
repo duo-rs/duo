@@ -12,9 +12,9 @@ mod grpc;
 mod models;
 mod partition;
 mod query;
+mod utils;
 mod warehouse;
 mod web;
-mod utils;
 
 pub use aggregator::Aggregator;
 pub use grpc::spawn_server as spawn_grpc_server;

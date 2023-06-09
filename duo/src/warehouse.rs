@@ -4,6 +4,7 @@ use crate::{
     aggregator::AggregatedData,
     arrow::{LogRecordBatchBuilder, SpanRecordBatchBuilder},
     partition::PartitionWriter,
+    web::serialize::KvFields,
     Log, Process, Span,
 };
 use duo_api as proto;
@@ -53,10 +54,13 @@ impl Warehouse {
                 .cloned()
                 .collect();
 
-            // TODO: Auto insert 'error = true' tag, this will help Jaeger UI show error icon.
-            // if errors > 0 {
-            //     span.tags.insert("error".into(), true.into());
-            // }
+            // Auto insert 'error = true' tag, this will help Jaeger UI show error icon.
+            if errors > 0 {
+                let key = String::from("error");
+                let value = proto::Value::from(true);
+                let tag = KvFields(&key, &value);
+                span.tags.push(serde_json::to_value(tag).unwrap());
+            }
         }
     }
 

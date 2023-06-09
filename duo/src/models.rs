@@ -22,7 +22,8 @@ pub struct Span {
     pub start: OffsetDateTime,
     #[serde(default, deserialize_with = "deser::option_miscrosecond")]
     pub end: Option<OffsetDateTime>,
-    pub tags: serde_json::Value,
+    #[serde(default, deserialize_with = "deser::list_value")]
+    pub tags: Vec<serde_json::Value>,
     #[serde(skip_deserializing)]
     pub logs: Vec<Log>,
 }
@@ -87,19 +88,21 @@ impl Log {
 
 impl From<&proto::Span> for Span {
     fn from(raw: &proto::Span) -> Self {
-        let mut tags = raw.tags.clone();
+        let mut raw_tags = raw.tags.clone();
         for key in ["@busy", "@idle"] {
             if let Some(proto::Value {
                 inner: Some(proto::ValueEnum::U64Val(value)),
-            }) = tags.remove(key)
+            }) = raw_tags.remove(key)
             {
-                tags.insert(key.into(), format_timing_value(value).into());
+                raw_tags.insert(key.into(), format_timing_value(value).into());
             }
         }
 
-        let fields = tags
+        let tags = raw_tags
             .iter()
-            .map(|(key, value)| crate::web::serialize::KvFields(key, value))
+            .map(|(key, value)| {
+                serde_json::to_value(crate::web::serialize::KvFields(key, value)).unwrap()
+            })
             .collect::<Vec<_>>();
 
         Span {
@@ -126,7 +129,7 @@ impl From<&proto::Span> for Span {
                         .map(OffsetDateTime::from)
                 })
                 .or_else(|| Some(OffsetDateTime::now_utc())),
-            tags: serde_json::to_value(fields).unwrap(),
+            tags,
             logs: Vec::new(),
         }
     }

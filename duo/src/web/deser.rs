@@ -1,4 +1,5 @@
 use serde::de;
+use serde_json::Value;
 use time::{Duration, OffsetDateTime};
 
 pub(super) fn option_ignore_error<'de, T, D>(d: D) -> Result<Option<T>, D::Error>
@@ -23,11 +24,36 @@ where
     d.deserialize_any(MicroSecondsTimestampVisitor)
 }
 
+pub fn list_value<'de, D>(d: D) -> Result<Vec<Value>, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    d.deserialize_any(ListValueVisitor)
+}
+
 pub(super) fn option_duration<'de, D>(d: D) -> Result<Option<Duration>, D::Error>
 where
     D: de::Deserializer<'de>,
 {
     d.deserialize_option(OptionDurationVisitor)
+}
+
+struct ListValueVisitor;
+
+impl<'de> de::Visitor<'de> for ListValueVisitor {
+    type Value = Vec<Value>;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(formatter, "an array string")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        let list: Vec<Value> = serde_json::from_str(v).unwrap();
+        Ok(list)
+    }
 }
 
 struct OptionMicroSecondsTimestampVisitor;
