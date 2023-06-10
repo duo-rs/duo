@@ -1,4 +1,8 @@
-use std::{collections::HashMap, mem, num::NonZeroU64};
+use std::{
+    collections::{HashMap, HashSet},
+    mem,
+    num::NonZeroU64,
+};
 
 use crate::{
     aggregator::AggregatedData,
@@ -36,12 +40,37 @@ impl Warehouse {
         Warehouse::default()
     }
 
-    pub(crate) fn services(&self) -> &HashMap<String, Vec<Process>> {
-        &self.services
-    }
-
     pub(crate) fn spans(&self) -> &Vec<Span> {
         &self.spans
+    }
+
+    pub(super) fn processes(&self) -> HashMap<String, Process> {
+        self.services
+            .values()
+            .flat_map(|processes| {
+                processes
+                    .iter()
+                    .map(|process| (process.id.clone(), process.clone()))
+                    .collect::<Vec<_>>()
+            })
+            .collect()
+    }
+
+    pub(super) fn service_names(&self) -> Vec<String> {
+        self.services.keys().cloned().collect()
+    }
+
+    pub(super) fn span_names(&self, service: &str) -> HashSet<String> {
+        self.spans()
+            .iter()
+            .filter_map(|span| {
+                if span.process_id.starts_with(service) {
+                    Some(span.name.clone())
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 
     pub(crate) fn correlate_span_logs(&self, span: &mut Span) {

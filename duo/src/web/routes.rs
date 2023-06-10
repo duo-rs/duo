@@ -47,7 +47,7 @@ pub(super) async fn services(
     Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
 ) -> impl IntoResponse {
     let warehouse = warehouse.read();
-    Json(JaegerData(TraceQuery::new(&warehouse).service_names()))
+    Json(JaegerData(warehouse.service_names()))
 }
 
 pub(super) async fn operations(
@@ -55,7 +55,7 @@ pub(super) async fn operations(
     Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
 ) -> impl IntoResponse {
     let warehouse = warehouse.read();
-    Json(JaegerData(TraceQuery::new(&warehouse).span_names(&service)))
+    Json(JaegerData(warehouse.span_names(&service)))
 }
 
 pub(super) async fn trace(
@@ -82,7 +82,7 @@ pub(super) async fn stats(
 ) -> impl IntoResponse {
     let warehouse = warehouse.read();
     serde_json::json!({
-            "services": warehouse.services(),
+            "process": warehouse.processes(),
             "logs": warehouse.logs.len(),
             "spans": warehouse.spans.len(),
     })

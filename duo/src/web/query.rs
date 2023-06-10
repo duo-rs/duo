@@ -1,12 +1,9 @@
 use crate::query::PartitionQuery;
-use crate::{Process, Span, TraceExt, Warehouse};
+use crate::{Span, TraceExt, Warehouse};
 use datafusion::prelude::*;
 use std::borrow::Cow;
 use std::vec;
-use std::{
-    collections::{HashMap, HashSet},
-    num::NonZeroU64,
-};
+use std::{collections::HashMap, num::NonZeroU64};
 
 use super::routes::QueryParameters;
 
@@ -20,8 +17,8 @@ impl<'a> TraceQuery<'a> {
     }
 
     pub(super) async fn filter_traces(&self, p: QueryParameters) -> Vec<TraceExt> {
-        let processes = self.processes();
-        let process_prefix = format!("{}:", p.service);
+        let processes = self.0.processes();
+        let process_prefix = p.service;
         let limit = p.limit.unwrap_or(DEFAUT_TRACE_LIMIT);
         // <trace_id, spans>
         let mut traces = HashMap::<NonZeroU64, Vec<Cow<Span>>>::new();
@@ -97,24 +94,8 @@ impl<'a> TraceQuery<'a> {
             .collect()
     }
 
-    pub(super) fn span_names(&self, service: &str) -> HashSet<String> {
-        let process_prefix = format!("{}:", service);
-
-        self.0
-            .spans()
-            .iter()
-            .filter_map(|span| {
-                if span.process_id.starts_with(&process_prefix) {
-                    Some(span.name.clone())
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-
     pub(super) fn get_trace_by_id(&self, trace_id: NonZeroU64) -> Option<TraceExt> {
-        let processes = self.processes();
+        let processes = self.0.processes();
         let spans = self
             .0
             .spans()
@@ -137,24 +118,5 @@ impl<'a> TraceQuery<'a> {
                 processes,
             })
         }
-    }
-
-    pub(super) fn processes(&self) -> HashMap<String, Process> {
-        self.0
-            .services()
-            .iter()
-            .flat_map(|(service_name, processes)| {
-                processes
-                    .iter()
-                    .cloned()
-                    .enumerate()
-                    .map(|(i, process)| (format!("{}:{}", &service_name, i), process))
-                    .collect::<Vec<_>>()
-            })
-            .collect()
-    }
-
-    pub(super) fn service_names(&self) -> Vec<String> {
-        self.0.services().keys().cloned().collect()
     }
 }
