@@ -4,7 +4,7 @@ use duo_api as proto;
 use serde::{ser::SerializeMap, Serialize, Serializer};
 use serde_json::value::Value::Null;
 
-use crate::{Log, Process, Span, TraceExt};
+use crate::{Log, Span, TraceExt};
 
 use super::JaegerData;
 
@@ -143,23 +143,6 @@ impl Serialize for TraceExt {
         )?;
         map.serialize_entry("processes", &self.processes)?;
         map.serialize_entry("warnings", &Null)?;
-        map.end()
-    }
-}
-
-impl Serialize for Process {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut map = serializer.serialize_map(Some(4))?;
-        map.serialize_entry("serviceName", &self.service_name)?;
-        let tags: Vec<_> = self
-            .tags
-            .iter()
-            .map(|(key, value)| KvFields(key, value))
-            .collect();
-        map.serialize_entry("tags", &tags)?;
         map.end()
     }
 }

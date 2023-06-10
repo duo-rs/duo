@@ -1,7 +1,10 @@
 use std::{
     collections::{HashMap, HashSet},
+    fs::File,
+    io::Write,
     mem,
     num::NonZeroU64,
+    path::Path,
 };
 
 use crate::{
@@ -11,6 +14,7 @@ use crate::{
     web::serialize::KvFields,
     Log, Process, Span,
 };
+use anyhow::Result;
 use duo_api as proto;
 use tracing::Level;
 
@@ -38,6 +42,34 @@ impl std::fmt::Debug for Warehouse {
 impl Warehouse {
     pub fn new() -> Self {
         Warehouse::default()
+    }
+
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let path = path.as_ref().join("process.json");
+        if !path.exists() {
+            return Ok(Self::new());
+        }
+
+        let file = File::open(path)?;
+        let mut services = HashMap::<String, Vec<_>>::new();
+        let data: Vec<Process> = match serde_json::from_reader(file) {
+            Ok(data) => data,
+            Err(err) => {
+                println!("Warning: read process.json failed: {err}");
+                return Ok(Self::new());
+            }
+        };
+        data.into_iter().for_each(|process| {
+            services
+                .entry(process.service_name.clone())
+                .and_modify(|vec| vec.push(process))
+                .or_insert_with(Vec::new);
+        });
+
+        Ok(Warehouse {
+            services,
+            ..Default::default()
+        })
     }
 
     pub(crate) fn spans(&self) -> &Vec<Span> {
@@ -103,8 +135,15 @@ impl Warehouse {
         service_processes.push(Process {
             id: process_id.clone(),
             service_name,
-            tags: process.tags,
+            tags: process
+                .tags
+                .iter()
+                .map(|(key, value)| {
+                    serde_json::to_value(crate::web::serialize::KvFields(key, value)).unwrap()
+                })
+                .collect::<Vec<_>>(),
         });
+        self.write_process(".").unwrap();
         process_id
     }
 
@@ -129,7 +168,15 @@ impl Warehouse {
         });
     }
 
-    pub(crate) async fn write_parquet(&mut self) -> anyhow::Result<()> {
+    fn write_process<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let mut file = File::create(path.as_ref().join("process.json"))?;
+        file.write_all(
+            serde_json::to_string(&self.processes().values().collect::<Vec<_>>())?.as_bytes(),
+        )?;
+        Ok(())
+    }
+
+    pub(crate) async fn write_parquet(&mut self) -> Result<()> {
         let pw = PartitionWriter::with_minute();
 
         if !self.spans.is_empty() {

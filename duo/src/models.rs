@@ -1,15 +1,16 @@
 use crate::web::deser;
 use duo_api as proto;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, hash::Hash, num::NonZeroU64, time::SystemTime};
 use time::{Duration, OffsetDateTime};
 use tracing::Level;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Process {
     pub id: String,
+    #[serde(rename = "serviceName")]
     pub service_name: String,
-    pub tags: HashMap<String, proto::Value>,
+    pub tags: Vec<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

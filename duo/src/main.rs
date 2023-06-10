@@ -61,7 +61,7 @@ async fn main() -> Result<()> {
         .with(fmt::layer())
         .with(Targets::new().with_target("duo", Level::DEBUG))
         .init();
-    let warehouse = Arc::new(RwLock::new(Warehouse::new()));
+    let warehouse = Arc::new(RwLock::new(Warehouse::load(".")?));
 
     match Cli::parse().command {
         Commands::Start {
