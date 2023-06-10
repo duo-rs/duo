@@ -67,7 +67,7 @@ pub(super) async fn trace(
 
     match trace_id {
         Some(trace_id) => {
-            if let Some(trace) = TraceQuery::new(&warehouse).get_trace_by_id(trace_id) {
+            if let Some(trace) = TraceQuery::new(&warehouse).get_trace_by_id(trace_id).await {
                 Json(JaegerData(vec![trace])).into_response()
             } else {
                 Json(JaegerData(Vec::<TraceExt>::new())).into_response()

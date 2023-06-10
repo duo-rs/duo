@@ -15,7 +15,7 @@ pub fn spawn_server(warehouse: Arc<RwLock<Warehouse>>, port: u16) {
     tokio::spawn(async move {
         let addr = SocketAddr::from(([127, 0, 0, 1], port));
         let mut service = DuoServer::new(warehouse);
-        service.bootstrap();
+        service.run();
 
         println!("gRPC server listening on http://{}\n", addr);
         Server::builder()

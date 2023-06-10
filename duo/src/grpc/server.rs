@@ -24,7 +24,7 @@ impl DuoServer {
         }
     }
 
-    pub fn bootstrap(&mut self) {
+    pub fn run(&mut self) {
         let aggregator = Arc::clone(&self.aggregator);
         let warehouse = Arc::clone(&self.warehouse);
         tokio::spawn(async move {
@@ -63,7 +63,11 @@ impl Instrument for DuoServer {
             .into_inner()
             .process
             .ok_or_else(|| tonic::Status::invalid_argument("missing process"))?;
-        let process_id = self.warehouse.write().register_process(process);
+        let process_id = self
+            .warehouse
+            .write()
+            .register_process(process)
+            .expect("Register process failed.");
         Ok(Response::new(RegisterProcessResponse { process_id }))
     }
 

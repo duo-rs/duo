@@ -10,7 +10,7 @@ use datafusion::{
     prelude::{Expr, SessionContext},
 };
 use serde_json::Value;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 
 use crate::{arrow::schema_span, utils::TimePeriod};
 
@@ -28,6 +28,12 @@ impl PartitionQuery {
             root_path,
             prefixes: TimePeriod::new(start, end, 1).generate_prefixes(),
         }
+    }
+
+    pub fn recent_hours(root_path: PathBuf, hours: i64) -> Self {
+        let now = OffsetDateTime::now_utc();
+        let hours_ago = dbg!(now - Duration::hours(hours));
+        Self::new(root_path,  hours_ago, now)
     }
 
     fn table_paths(&self, table_name: &str) -> Vec<ListingTableUrl> {

@@ -28,17 +28,6 @@ pub struct Warehouse {
     pub span_log_map: HashMap<NonZeroU64, Vec<usize>>,
 }
 
-impl std::fmt::Debug for Warehouse {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Warehouse")
-            .field("services", &self.services)
-            .field("spans", &self.spans.len())
-            .field("logs", &self.logs.len())
-            .field("span_log_map", &self.span_log_map.len())
-            .finish()
-    }
-}
-
 impl Warehouse {
     pub fn new() -> Self {
         Warehouse::default()
@@ -58,7 +47,7 @@ impl Warehouse {
             }
         };
         let mut services = HashMap::<String, Vec<_>>::new();
-        dbg!(data).into_iter().for_each(|process| {
+        data.into_iter().for_each(|process| {
             services
                 .entry(process.service_name.clone())
                 .or_insert_with(Vec::new)
@@ -125,12 +114,12 @@ impl Warehouse {
     }
 
     /// Register new process and return the process id.
-    pub(crate) fn register_process(&mut self, process: proto::Process) -> String {
+    pub(crate) fn register_process(&mut self, process: proto::Process) -> Result<String> {
         let service_name = process.name;
         let service_processes = self.services.entry(service_name.clone()).or_default();
 
         // TODO: generate new process id
-        let process_id = format!("{}:{}", &service_name, service_processes.len());
+        let process_id = format!("{}-{}", &service_name, service_processes.len());
         service_processes.push(Process {
             id: process_id.clone(),
             service_name,
@@ -138,12 +127,13 @@ impl Warehouse {
                 .tags
                 .iter()
                 .map(|(key, value)| {
-                    serde_json::to_value(crate::web::serialize::KvFields(key, value)).unwrap()
+                    serde_json::to_value(crate::web::serialize::KvFields(key, value))
+                        .expect("Serialize process tags error.")
                 })
                 .collect::<Vec<_>>(),
         });
-        self.write_process(".").unwrap();
-        process_id
+        self.write_process(".")?;
+        Ok(process_id)
     }
 
     // Merge aggregated data.

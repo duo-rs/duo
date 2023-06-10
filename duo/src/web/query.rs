@@ -30,14 +30,15 @@ impl<'a> TraceQuery<'a> {
             .into_iter()
             .map(|value| Cow::<Span>::Owned(serde_json::from_value::<Span>(value).unwrap()));
         println!("spans from parquet: {}", spans.len());
+
         let mut total_spans = self.0.spans().iter().map(Cow::Borrowed).collect::<Vec<_>>();
         total_spans.extend(spans);
         for span in total_spans {
             if traces.contains_key(&span.trace_id) {
                 traces
                     .entry(span.trace_id)
-                    .and_modify(|spans| spans.push(span))
-                    .or_insert_with(Vec::new);
+                    .or_insert_with(Vec::new)
+                    .push(span);
                 continue;
             }
 
@@ -71,8 +72,8 @@ impl<'a> TraceQuery<'a> {
 
             traces
                 .entry(span.trace_id)
-                .and_modify(|spans| spans.push(span))
-                .or_insert_with(Vec::new);
+                .or_insert_with(Vec::new)
+                .push(span);
         }
 
         traces
@@ -93,28 +94,38 @@ impl<'a> TraceQuery<'a> {
             .collect()
     }
 
-    pub(super) fn get_trace_by_id(&self, trace_id: NonZeroU64) -> Option<TraceExt> {
-        let processes = self.0.processes();
-        let spans = self
+    pub(super) async fn get_trace_by_id(&self, trace_id: NonZeroU64) -> Option<TraceExt> {
+        let mut trace_spans = self
             .0
             .spans()
             .iter()
             .filter(|span| span.trace_id == trace_id)
-            .cloned()
+            .map(Cow::Borrowed)
             .collect::<Vec<_>>();
-        if spans.is_empty() {
+        if trace_spans.is_empty() {
+            let spans = PartitionQuery::recent_hours(".".into(), 12)
+                .query_span(col("trace_id").eq(lit(trace_id.get())))
+                .await
+                .unwrap()
+                .into_iter()
+                .map(|value| Cow::<Span>::Owned(serde_json::from_value::<Span>(value).unwrap()));
+            trace_spans.extend(spans);
+        }
+
+        if trace_spans.is_empty() {
             None
         } else {
             Some(TraceExt {
                 trace_id,
-                spans: spans
+                spans: trace_spans
                     .into_iter()
-                    .map(|mut span| {
+                    .map(|span| {
+                        let mut span = span.clone().into_owned();
                         self.0.correlate_span_logs(&mut span);
                         span
                     })
                     .collect(),
-                processes,
+                processes: self.0.processes(),
             })
         }
     }
