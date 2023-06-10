@@ -41,6 +41,7 @@ pub struct TimePeriod {
 
 impl TimePeriod {
     pub fn new(start: OffsetDateTime, end: OffsetDateTime, data_granularity: u8) -> Self {
+        debug_assert!(end > start);
         Self {
             data_granularity,
             start,
@@ -113,7 +114,7 @@ impl TimePeriod {
         end_minute: u8,
     ) -> Vec<String> {
         // ensure both start and end are within the same day
-        if end_hour - start_hour >= 24 {
+        if end_hour.saturating_sub(start_hour) >= 24 {
             return vec![prefix.to_owned()];
         }
 

@@ -115,7 +115,7 @@ where
             let metadata = attrs.metadata();
             let mut tags = HashMap::with_capacity(3 + metadata.fields().len());
             if let (Some(file), Some(line)) = (metadata.file(), metadata.line()) {
-                tags.insert("@line".into(), format!("{}:{}", file, line).into());
+                tags.insert("line".into(), format!("{}:{}", file, line).into());
             }
             let mut span = proto::Span {
                 id: rand_id,
@@ -215,8 +215,8 @@ where
                 span.end = Some(SystemTime::now().into());
 
                 if let Some(timings) = extensions.remove::<Timings>() {
-                    span.tags.insert("@idle".into(), timings.idle.into());
-                    span.tags.insert("@busy".into(), timings.busy.into());
+                    span.tags.insert("idle".into(), timings.idle.into());
+                    span.tags.insert("busy".into(), timings.busy.into());
                 }
 
                 self.send_message(Message::CloseSpan(span));
