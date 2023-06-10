@@ -76,3 +76,16 @@ pub(super) async fn trace(
         None => (StatusCode::NOT_FOUND, format!("trace {} not found", id)).into_response(),
     }
 }
+
+pub(super) async fn stats(
+    Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
+) -> impl IntoResponse {
+    let warehouse = warehouse.read();
+    serde_json::json!({
+            "services": warehouse.services(),
+            "logs": warehouse.logs.len(),
+            "spans": warehouse.spans.len(),
+    })
+    .to_string()
+    // format!("{:?}", warehouse)
+}

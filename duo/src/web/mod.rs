@@ -41,6 +41,7 @@ pub async fn run_web_server(warehouse: Arc<RwLock<Warehouse>>, port: u16) -> any
         .route("/api/traces/:id", get(routes::trace))
         .route("/api/services", get(routes::services))
         .route("/api/services/:service/operations", get(routes::operations))
+        .route("/stats", get(routes::stats))
         .fallback(fallback)
         .layer(layer);
 

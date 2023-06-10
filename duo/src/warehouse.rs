@@ -14,10 +14,10 @@ use tracing::Level;
 pub struct Warehouse {
     // Collection of services.
     services: HashMap<String, Vec<Process>>,
-    spans: Vec<Span>,
-    logs: Vec<Log>,
+    pub spans: Vec<Span>,
+    pub logs: Vec<Log>,
     // <span_id, Vec<log id>>
-    span_log_map: HashMap<NonZeroU64, Vec<usize>>,
+    pub span_log_map: HashMap<NonZeroU64, Vec<usize>>,
 }
 
 impl std::fmt::Debug for Warehouse {

@@ -34,7 +34,6 @@ impl DuoServer {
                 let data = aggregator.write().aggregate();
                 let mut warehouse = warehouse.write();
                 warehouse.merge_data(data);
-                debug!("After merge: {:?}", warehouse);
             }
         });
 
