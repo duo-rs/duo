@@ -12,7 +12,10 @@ use datafusion::{
 use serde_json::Value;
 use time::{Duration, OffsetDateTime};
 
-use crate::{arrow::schema_span, utils::TimePeriod};
+use crate::{arrow::schema_span, utils::TimePeriod, Log, Span};
+
+static TABLE_SPAN: &str = "span";
+static TABLE_LOG: &str = "log";
 
 pub struct PartitionQuery {
     ctx: SessionContext,
@@ -33,7 +36,7 @@ impl PartitionQuery {
     pub fn recent_hours(root_path: PathBuf, hours: i64) -> Self {
         let now = OffsetDateTime::now_utc();
         let hours_ago = dbg!(now - Duration::hours(hours));
-        Self::new(root_path,  hours_ago, now)
+        Self::new(root_path, hours_ago, now)
     }
 
     fn table_paths(&self, table_name: &str) -> Vec<ListingTableUrl> {
@@ -58,8 +61,8 @@ impl PartitionQuery {
         Ok(Arc::new(ListingTable::try_new(listing_table_config)?))
     }
 
-    pub async fn query_span(&self, expr: Expr) -> Result<Vec<Value>> {
-        let df = self.ctx.read_table(self.get_table("span")?)?;
+    async fn query_table(&self, table_name: &str, expr: Expr) -> Result<Vec<Value>> {
+        let df = self.ctx.read_table(self.get_table(table_name)?)?;
         let batch = df.filter(expr)?.collect().await?;
         let json_values = arrow_json::writer::record_batches_to_json_rows(&batch)?
             .into_iter()
@@ -67,6 +70,16 @@ impl PartitionQuery {
             .collect::<Vec<_>>();
         Ok(json_values)
     }
+
+    pub async fn query_span(&self, expr: Expr) -> Result<Vec<Span>> {
+        Ok(self
+            .query_table(TABLE_SPAN, expr)
+            .await?
+            .into_iter()
+            .map(|value| serde_json::from_value::<Span>(value).unwrap())
+            .collect())
+    }
+
 }
 
 #[cfg(test)]

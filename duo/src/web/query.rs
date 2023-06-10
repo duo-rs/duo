@@ -28,7 +28,7 @@ impl<'a> TraceQuery<'a> {
             .await
             .unwrap()
             .into_iter()
-            .map(|value| Cow::<Span>::Owned(serde_json::from_value::<Span>(value).unwrap()));
+            .map(Cow::Owned);
         println!("spans from parquet: {}", spans.len());
 
         let mut total_spans = self.0.spans().iter().map(Cow::Borrowed).collect::<Vec<_>>();
@@ -108,7 +108,7 @@ impl<'a> TraceQuery<'a> {
                 .await
                 .unwrap()
                 .into_iter()
-                .map(|value| Cow::<Span>::Owned(serde_json::from_value::<Span>(value).unwrap()));
+                .map(Cow::Owned);
             trace_spans.extend(spans);
         }
 
