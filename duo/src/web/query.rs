@@ -2,7 +2,6 @@ use crate::query::PartitionQuery;
 use crate::{Span, TraceExt, Warehouse};
 use datafusion::prelude::*;
 use std::borrow::Cow;
-use std::vec;
 use std::{collections::HashMap, num::NonZeroU64};
 
 use super::routes::QueryParameters;
@@ -31,8 +30,8 @@ impl<'a> TraceQuery<'a> {
             .into_iter()
             .map(|value| Cow::<Span>::Owned(serde_json::from_value::<Span>(value).unwrap()));
         println!("spans from parquet: {}", spans.len());
-        let mut total_spans = vec![];
-        total_spans.extend(self.0.spans().iter().map(Cow::Borrowed));
+        let mut total_spans = self.0.spans().iter().map(Cow::Borrowed).collect::<Vec<_>>();
+        total_spans.extend(spans);
         for span in total_spans {
             if traces.contains_key(&span.trace_id) {
                 traces

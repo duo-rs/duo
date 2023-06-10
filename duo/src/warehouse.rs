@@ -50,20 +50,19 @@ impl Warehouse {
             return Ok(Self::new());
         }
 
-        let file = File::open(path)?;
-        let mut services = HashMap::<String, Vec<_>>::new();
-        let data: Vec<Process> = match serde_json::from_reader(file) {
+        let data: Vec<Process> = match serde_json::from_reader(File::open(path)?) {
             Ok(data) => data,
             Err(err) => {
                 println!("Warning: read process.json failed: {err}");
                 return Ok(Self::new());
             }
         };
-        data.into_iter().for_each(|process| {
+        let mut services = HashMap::<String, Vec<_>>::new();
+        dbg!(data).into_iter().for_each(|process| {
             services
                 .entry(process.service_name.clone())
-                .and_modify(|vec| vec.push(process))
-                .or_insert_with(Vec::new);
+                .or_insert_with(Vec::new)
+                .push(process);
         });
 
         Ok(Warehouse {
