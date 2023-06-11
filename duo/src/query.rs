@@ -1,6 +1,7 @@
 use std::{path::PathBuf, sync::Arc};
 
 use anyhow::Result;
+use arrow_json::writer::record_batches_to_json_rows;
 use datafusion::{
     datasource::{
         file_format::parquet::ParquetFormat,
@@ -9,6 +10,7 @@ use datafusion::{
     },
     prelude::{Expr, SessionContext},
 };
+use serde::{de::DeserializeOwned, Deserialize};
 use serde_json::Value;
 use time::{Duration, OffsetDateTime};
 
@@ -49,26 +51,32 @@ impl PartitionQuery {
             .collect()
     }
 
-    fn get_table(&self, table_name: &str) -> Result<Arc<dyn TableProvider>> {
+    async fn get_table(&self, table_name: &str) -> Result<Arc<dyn TableProvider>> {
         let listing_options = ListingOptions::new(Arc::new(
             ParquetFormat::default().with_enable_pruning(Some(true)),
         ))
         .with_file_extension(".parquet");
-        let listing_table_config =
+        let mut listing_table_config =
             ListingTableConfig::new_with_multi_paths(self.table_paths(table_name))
-                .with_schema(schema_span())
                 .with_listing_options(listing_options);
+        if table_name == TABLE_SPAN {
+            listing_table_config = listing_table_config.with_schema(schema_span());
+        } else {
+            listing_table_config = listing_table_config.infer_schema(&self.ctx.state()).await?;
+        }
         Ok(Arc::new(ListingTable::try_new(listing_table_config)?))
     }
 
-    async fn query_table(&self, table_name: &str, expr: Expr) -> Result<Vec<Value>> {
-        let df = self.ctx.read_table(self.get_table(table_name)?)?;
+    async fn query_table<T: DeserializeOwned>(
+        &self,
+        table_name: &str,
+        expr: Expr,
+    ) -> Result<impl IntoIterator<Item = T>> {
+        let df = self.ctx.read_table(self.get_table(table_name).await?)?;
         let batch = df.filter(expr)?.collect().await?;
-        let json_values =
-            arrow_json::writer::record_batches_to_json_rows(&batch.iter().collect::<Vec<_>>())?
-                .into_iter()
-                .map(Value::Object)
-                .collect::<Vec<_>>();
+        let json_values = record_batches_to_json_rows(&batch.iter().collect::<Vec<_>>())?
+            .into_iter()
+            .map(|value| serde_json::from_value::<T>(Value::Object(value)).unwrap());
         Ok(json_values)
     }
 
@@ -77,7 +85,6 @@ impl PartitionQuery {
             .query_table(TABLE_SPAN, expr)
             .await?
             .into_iter()
-            .map(|value| serde_json::from_value::<Span>(value).unwrap())
             .collect())
     }
 }
