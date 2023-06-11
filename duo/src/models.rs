@@ -31,9 +31,10 @@ pub struct Span {
     pub logs: Vec<Log>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize)]
 pub struct Log {
     /// The numeric id in log collection.
+    #[serde(skip)]
     pub idx: usize,
     pub process_id: String,
     /// The span's id the log belong to.
@@ -41,7 +42,9 @@ pub struct Log {
     pub span_id: Option<NonZeroU64>,
     pub trace_id: Option<NonZeroU64>,
     // TODO: change level to i32
+    #[serde(with = "deser::level")]
     pub level: Level,
+    #[serde(deserialize_with = "deser::miscrosecond")]
     pub time: OffsetDateTime,
     // Vec of serde_json::Map
     pub fields: Vec<Map<String, JsonValue>>,
@@ -129,9 +132,8 @@ impl From<proto::Log> for Log {
             .map(tracing::Level::from)
             .unwrap_or(tracing::Level::DEBUG);
 
-        let mut fields = log.fields;
-        fields.insert("level".to_owned(), level.as_str().to_lowercase().into());
-        let fields = fields
+        let fields = log
+            .fields
             .into_iter()
             .map(|(key, value)| [(key, value.into())].into_iter().collect())
             .collect::<Vec<_>>();

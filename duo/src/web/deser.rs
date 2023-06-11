@@ -38,6 +38,28 @@ where
     d.deserialize_option(OptionDurationVisitor)
 }
 
+pub mod level {
+    use std::str::FromStr;
+
+    use serde::{Deserialize, Deserializer, Serializer};
+    use tracing::Level;
+
+    pub fn serialize<S>(level: &Level, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(level.as_str())
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Level, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let level = String::deserialize(deserializer)?;
+        Ok(Level::from_str(&level).expect("invalid level"))
+    }
+}
+
 struct ListValueVisitor;
 
 impl<'de> de::Visitor<'de> for ListValueVisitor {
