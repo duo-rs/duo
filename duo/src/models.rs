@@ -11,7 +11,7 @@ pub struct Process {
     pub id: String,
     #[serde(rename = "serviceName")]
     pub service_name: String,
-    pub tags: Vec<JsonValue>,
+    pub tags: Vec<Map<String, JsonValue>>,
 }
 
 #[derive(Clone, Deserialize)]

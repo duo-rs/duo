@@ -1,10 +1,9 @@
-use std::num::NonZeroU64;
+use std::{collections::HashMap, num::NonZeroU64};
 
-use duo_api as proto;
 use serde::{ser::SerializeMap, Serialize, Serializer};
 use serde_json::{Map, Value};
 
-use crate::{Log, Span, TraceExt};
+use crate::{Log, Process, Span, TraceExt};
 
 use super::JaegerData;
 
@@ -13,8 +12,6 @@ struct SpanExt<'a> {
     trace_id: NonZeroU64,
     process_id: &'a String,
 }
-
-pub struct KvFields<'a>(pub &'a String, pub &'a proto::Value);
 
 struct JaegerField<'a>(&'a Map<String, Value>);
 
@@ -63,37 +60,6 @@ impl<'a> Serialize for JaegerField<'a> {
             }
         }
 
-        map.end()
-    }
-}
-
-impl<'a> Serialize for KvFields<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut map = serializer.serialize_map(Some(3))?;
-        map.serialize_entry("key", &self.0)?;
-        if let Some(value) = self.1.inner.as_ref() {
-            match value {
-                proto::ValueEnum::StrVal(v) => {
-                    map.serialize_entry("type", "string")?;
-                    map.serialize_entry("value", &v)?
-                }
-                proto::ValueEnum::U64Val(v) => {
-                    map.serialize_entry("type", "int64")?;
-                    map.serialize_entry("value", &v)?
-                }
-                proto::ValueEnum::I64Val(v) => {
-                    map.serialize_entry("type", "int64")?;
-                    map.serialize_entry("value", &v)?
-                }
-                proto::ValueEnum::BoolVal(v) => {
-                    map.serialize_entry("type", "bool")?;
-                    map.serialize_entry("value", &v)?
-                }
-            }
-        }
         map.end()
     }
 }
@@ -171,7 +137,31 @@ impl Serialize for TraceExt {
                 })
                 .collect::<Vec<_>>(),
         )?;
-        map.serialize_entry("processes", &self.processes)?;
+
+        // Due to Jaeger has different format, here we
+        // use newtype to reimplement the searialization.
+        struct ProcessType<'a>(&'a Process);
+        impl<'a> Serialize for ProcessType<'a> {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                let inner = self.0;
+                let mut map = serializer.serialize_map(Some(3))?;
+                map.serialize_entry("id", &inner.id)?;
+                map.serialize_entry("serviceName", &inner.service_name)?;
+                let tags: Vec<_> = inner.tags.iter().map(JaegerField).collect();
+                map.serialize_entry("tags", &tags)?;
+                map.end()
+            }
+        }
+
+        let processes = self
+            .processes
+            .iter()
+            .map(|(key, value)| (key, ProcessType(value)))
+            .collect::<HashMap<_, _>>();
+        map.serialize_entry("processes", &processes)?;
         map.serialize_entry("warnings", &Value::Null)?;
         map.end()
     }

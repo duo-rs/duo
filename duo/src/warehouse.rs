@@ -125,11 +125,8 @@ impl Warehouse {
             service_name,
             tags: process
                 .tags
-                .iter()
-                .map(|(key, value)| {
-                    serde_json::to_value(crate::web::serialize::KvFields(key, value))
-                        .expect("Serialize process tags error.")
-                })
+                .into_iter()
+                .map(|(key, value)| [(key, value.into())].into_iter().collect())
                 .collect::<Vec<_>>(),
         });
         self.write_process(".")?;
