@@ -156,6 +156,8 @@ where
         let metadata = event.metadata();
         let fields = HashMap::with_capacity(metadata.fields().len());
         let mut log = proto::Log {
+            // Set a temporary process id, we'll set a real value in send stage.
+            process_id: String::new(),
             span_id,
             trace_id,
             level: proto::Level::from(*metadata.level()) as i32,

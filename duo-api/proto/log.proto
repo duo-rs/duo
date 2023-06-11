@@ -6,14 +6,16 @@ import "google/protobuf/timestamp.proto";
 import "common.proto";
 
 message Log {
+    // The prcess id
+    string process_id = 1;
     // Span id.
-    optional uint64 span_id = 1;
+    optional uint64 span_id = 2;
     // Trace id.
-    optional uint64 trace_id = 2;
+    optional uint64 trace_id = 3;
     // Describes the level of verbosity of a log.
-    common.Level level = 3;
+    common.Level level = 4;
     // Timestamp.
-    google.protobuf.Timestamp time = 4;
+    google.protobuf.Timestamp time = 5;
     // Key-value fileds.
-    map<string, common.Value> fields = 7;
+    map<string, common.Value> fields = 6;
 }

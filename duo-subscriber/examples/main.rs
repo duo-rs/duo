@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use duo_subscriber::DuoLayer;
 use tonic::transport::Uri;
 use tracing::{debug, error, Level};
@@ -33,7 +35,7 @@ fn foz() {
 async fn main() {
     let fmt_layer = fmt::layer();
     let uri = Uri::from_static("http://127.0.0.1:6000");
-    let (duo_layer, handle) = DuoLayer::with_handle("example", uri).await;
+    let duo_layer = DuoLayer::new("example", uri).await;
     tracing_subscriber::registry()
         .with(fmt_layer)
         .with(duo_layer)
@@ -46,6 +48,5 @@ async fn main() {
 
     tracing::debug!("Bootstrap...");
     foo();
-
-    handle.await.unwrap();
+    tokio::time::sleep(Duration::from_secs(1)).await;
 }

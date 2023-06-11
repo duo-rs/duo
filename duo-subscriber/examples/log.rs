@@ -1,5 +1,7 @@
 // cargo run --example log --features=log-compat
 
+use std::time::Duration;
+
 use duo_subscriber::DuoLayer;
 use log::debug;
 use tonic::transport::Uri;
@@ -28,7 +30,7 @@ fn baz() {
 async fn main() {
     let name = "log";
     let uri = Uri::from_static("http://127.0.0.1:6000");
-    let (duo_layer, handle) = DuoLayer::with_handle(name, uri).await;
+    let duo_layer = DuoLayer::new(name, uri).await;
     tracing_subscriber::registry()
         .with(duo_layer)
         .with(
@@ -41,5 +43,5 @@ async fn main() {
     debug!("Bootstrap...");
     foo();
 
-    handle.await.unwrap();
+    tokio::time::sleep(Duration::from_secs(1)).await;
 }

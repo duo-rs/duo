@@ -21,6 +21,7 @@ pub fn schema_span() -> SchemaRef {
 
 pub fn schema_log() -> SchemaRef {
     Arc::new(Schema::new(vec![
+        Field::new("process_id", DataType::Utf8, false),
         Field::new("span_id", DataType::UInt64, true),
         Field::new("trace_id", DataType::UInt64, true),
         Field::new("level", DataType::Utf8, false),
@@ -43,6 +44,7 @@ pub struct SpanRecordBatchBuilder {
 
 #[derive(Default)]
 pub struct LogRecordBatchBuilder {
+    process_ids: Vec<String>,
     span_ids: Vec<Option<u64>>,
     trace_ids: Vec<Option<u64>>,
     levels: Vec<&'static str>,
@@ -88,6 +90,7 @@ impl SpanRecordBatchBuilder {
 
 impl LogRecordBatchBuilder {
     pub fn append_log(&mut self, log: Log) {
+        self.process_ids.push(log.process_id);
         self.span_ids.push(log.span_id.map(NonZeroU64::get));
         self.trace_ids.push(log.trace_id.map(NonZeroU64::get));
         self.levels.push(log.level.as_str());
@@ -104,6 +107,7 @@ impl LogRecordBatchBuilder {
         Ok(RecordBatch::try_new(
             schema_log(),
             vec![
+                Arc::new(StringArray::from(self.process_ids)),
                 Arc::new(UInt64Array::from(self.span_ids)),
                 Arc::new(UInt64Array::from(self.trace_ids)),
                 Arc::new(StringArray::from(self.levels)),

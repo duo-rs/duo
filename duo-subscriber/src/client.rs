@@ -44,7 +44,8 @@ impl DuoClient {
             .unwrap();
     }
 
-    pub async fn record_event(&mut self, log: proto::Log) {
+    pub async fn record_event(&mut self, mut log: proto::Log) {
+        log.process_id = self.process_id.clone();
         self.inner
             .record_event(Request::new(RecordEventRequest { log: Some(log) }))
             .await

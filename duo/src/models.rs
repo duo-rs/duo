@@ -1,7 +1,7 @@
 use crate::web::deser;
 use duo_api as proto;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, hash::Hash, num::NonZeroU64, time::SystemTime};
+use std::{collections::HashMap, num::NonZeroU64, time::SystemTime};
 use time::{Duration, OffsetDateTime};
 use tracing::Level;
 
@@ -34,6 +34,7 @@ pub struct Span {
 pub struct Log {
     /// The numeric id in log collection.
     pub idx: usize,
+    pub process_id: String,
     /// The span's id the log belong to.
     /// They have no span id if the log emitted out of tracing context.
     pub span_id: Option<NonZeroU64>,
@@ -49,21 +50,6 @@ pub struct TraceExt {
     pub spans: Vec<Span>,
     pub processes: HashMap<String, Process>,
 }
-
-impl Hash for Span {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
-        self.name.hash(state);
-    }
-}
-
-impl PartialEq for Span {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id && self.name == other.name
-    }
-}
-
-impl Eq for Span {}
 
 impl Span {
     pub fn as_micros(&self) -> i64 {
@@ -89,8 +75,8 @@ impl Log {
 }
 
 impl From<&proto::Span> for Span {
-    fn from(raw: &proto::Span) -> Self {
-        let mut raw_tags = raw.tags.clone();
+    fn from(span: &proto::Span) -> Self {
+        let mut raw_tags = span.tags.clone();
         for key in ["@busy", "@idle"] {
             if let Some(proto::Value {
                 inner: Some(proto::ValueEnum::U64Val(value)),
@@ -108,12 +94,12 @@ impl From<&proto::Span> for Span {
             .collect::<Vec<_>>();
 
         Span {
-            id: NonZeroU64::new(raw.id).expect("Span id cann not be 0"),
-            trace_id: NonZeroU64::new(raw.trace_id).expect("Trace id cann not be 0"),
-            parent_id: raw.parent_id.and_then(NonZeroU64::new),
-            process_id: raw.process_id.clone(),
-            name: raw.name.clone(),
-            start: raw
+            id: NonZeroU64::new(span.id).expect("Span id cann not be 0"),
+            trace_id: NonZeroU64::new(span.trace_id).expect("Trace id cann not be 0"),
+            parent_id: span.parent_id.and_then(NonZeroU64::new),
+            process_id: span.process_id.clone(),
+            name: span.name.clone(),
+            start: span
                 .start
                 .clone()
                 .and_then(|timestamp| {
@@ -122,7 +108,7 @@ impl From<&proto::Span> for Span {
                         .map(OffsetDateTime::from)
                 })
                 .unwrap_or_else(OffsetDateTime::now_utc),
-            end: raw
+            end: span
                 .end
                 .clone()
                 .and_then(|timestamp| {
@@ -148,6 +134,7 @@ impl From<proto::Log> for Log {
 
         Log {
             idx: 0,
+            process_id: log.process_id,
             span_id: log.span_id.and_then(NonZeroU64::new),
             trace_id: log.trace_id.and_then(NonZeroU64::new),
             level,
