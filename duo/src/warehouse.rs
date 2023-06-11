@@ -11,7 +11,6 @@ use crate::{
     aggregator::AggregatedData,
     arrow::{LogRecordBatchBuilder, SpanRecordBatchBuilder},
     partition::PartitionWriter,
-    web::serialize::KvFields,
     Log, Process, Span,
 };
 use anyhow::Result;
@@ -105,10 +104,11 @@ impl Warehouse {
 
             // Auto insert 'error = true' tag, this will help Jaeger UI show error icon.
             if errors > 0 {
-                let key = String::from("error");
-                let value = proto::Value::from(true);
-                let tag = KvFields(&key, &value);
-                span.tags.push(serde_json::to_value(tag).unwrap());
+                span.tags.push(
+                    [(String::from("error"), serde_json::Value::Bool(true))]
+                        .into_iter()
+                        .collect(),
+                );
             }
         }
     }

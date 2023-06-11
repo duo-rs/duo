@@ -1,5 +1,5 @@
 use serde::de;
-use serde_json::Value;
+use serde_json::{Map, Value};
 use time::{Duration, OffsetDateTime};
 
 pub(super) fn option_ignore_error<'de, T, D>(d: D) -> Result<Option<T>, D::Error>
@@ -24,7 +24,7 @@ where
     d.deserialize_any(MicroSecondsTimestampVisitor)
 }
 
-pub fn list_value<'de, D>(d: D) -> Result<Vec<Value>, D::Error>
+pub fn map_list<'de, D>(d: D) -> Result<Vec<Map<String, Value>>, D::Error>
 where
     D: de::Deserializer<'de>,
 {
@@ -41,7 +41,7 @@ where
 struct ListValueVisitor;
 
 impl<'de> de::Visitor<'de> for ListValueVisitor {
-    type Value = Vec<Value>;
+    type Value = Vec<Map<String, Value>>;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(formatter, "an array string")
@@ -51,7 +51,7 @@ impl<'de> de::Visitor<'de> for ListValueVisitor {
     where
         E: de::Error,
     {
-        let list: Vec<Value> = serde_json::from_str(v).unwrap();
+        let list = serde_json::from_str(v).unwrap();
         Ok(list)
     }
 }
