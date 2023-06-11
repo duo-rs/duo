@@ -1,5 +1,6 @@
-use duo_api as proto;
-use std::{collections::HashMap, num::NonZeroU64, sync::Arc};
+use arrow_json::{reader::infer_json_schema_from_iterator, ReaderBuilder};
+use serde_json::{Map, Value as JsonValue};
+use std::{num::NonZeroU64, sync::Arc};
 
 use crate::{Log, Span};
 use anyhow::Result;
@@ -19,17 +20,6 @@ pub fn schema_span() -> SchemaRef {
     ]))
 }
 
-pub fn schema_log() -> SchemaRef {
-    Arc::new(Schema::new(vec![
-        Field::new("process_id", DataType::Utf8, false),
-        Field::new("span_id", DataType::UInt64, true),
-        Field::new("trace_id", DataType::UInt64, true),
-        Field::new("level", DataType::Utf8, false),
-        Field::new("time", DataType::Int64, false),
-        Field::new("fields", DataType::Utf8, true),
-    ]))
-}
-
 #[derive(Default)]
 pub struct SpanRecordBatchBuilder {
     span_ids: Vec<u64>,
@@ -44,12 +34,7 @@ pub struct SpanRecordBatchBuilder {
 
 #[derive(Default)]
 pub struct LogRecordBatchBuilder {
-    process_ids: Vec<String>,
-    span_ids: Vec<Option<u64>>,
-    trace_ids: Vec<Option<u64>>,
-    levels: Vec<&'static str>,
-    times: Vec<i64>,
-    fields_list: Vec<HashMap<String, proto::Value>>,
+    data: Vec<JsonValue>,
 }
 
 impl SpanRecordBatchBuilder {
@@ -89,45 +74,25 @@ impl SpanRecordBatchBuilder {
 }
 
 impl LogRecordBatchBuilder {
-    pub fn append_log(&mut self, log: Log) {
-        self.process_ids.push(log.process_id);
-        self.span_ids.push(log.span_id.map(NonZeroU64::get));
-        self.trace_ids.push(log.trace_id.map(NonZeroU64::get));
-        self.levels.push(log.level.as_str());
-        self.times
-            .push((log.time.unix_timestamp_nanos() / 1000) as i64);
-        self.fields_list.push(log.fields);
+    pub fn append_log(&mut self, mut log: Log) {
+        let mut map = Map::new();
+        map.insert("process_id".into(), log.process_id.into());
+        map.insert("span_id".into(), log.span_id.map(NonZeroU64::get).into());
+        map.insert("trace_id".into(), log.trace_id.map(NonZeroU64::get).into());
+        map.insert("level".into(), log.level.as_str().into());
+        let timestamp_us = (log.time.unix_timestamp_nanos() / 1000) as i64;
+        map.insert("time".into(), timestamp_us.into());
+        for field in &mut log.fields {
+            map.append(field);
+        }
+        self.data.push(JsonValue::Object(map));
     }
 
     pub fn into_record_batch(self) -> Result<RecordBatch> {
-        if self.times.is_empty() {
-            return Ok(RecordBatch::new_empty(schema_log()));
-        }
-
-        Ok(RecordBatch::try_new(
-            schema_log(),
-            vec![
-                Arc::new(StringArray::from(self.process_ids)),
-                Arc::new(UInt64Array::from(self.span_ids)),
-                Arc::new(UInt64Array::from(self.trace_ids)),
-                Arc::new(StringArray::from(self.levels)),
-                Arc::new(Int64Array::from(self.times)),
-                build_field_array(&self.fields_list),
-            ],
-        )?)
+        let inferred_schema = infer_json_schema_from_iterator(self.data.iter().map(Ok))?;
+        let mut decoder = ReaderBuilder::new(Arc::new(dbg!(inferred_schema))).build_decoder()?;
+        decoder.serialize(&self.data)?;
+        let batch = decoder.flush()?.expect("Empty record batch");
+        Ok(batch)
     }
-}
-
-fn build_field_array(list: &[HashMap<String, proto::Value>]) -> Arc<StringArray> {
-    Arc::new(StringArray::from(
-        list.iter()
-            .map(|map| {
-                let fields = map
-                    .iter()
-                    .map(|(key, value)| crate::web::serialize::KvFields(key, value))
-                    .collect::<Vec<_>>();
-                serde_json::to_string(&fields).unwrap()
-            })
-            .collect::<Vec<_>>(),
-    ))
 }

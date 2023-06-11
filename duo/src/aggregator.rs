@@ -11,7 +11,6 @@ pub struct Aggregator {
     logs: Vec<proto::Log>,
 }
 
-#[derive(Debug)]
 pub struct AggregatedData {
     pub spans: Vec<Span>,
     pub logs: Vec<Log>,

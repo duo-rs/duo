@@ -1,6 +1,7 @@
 use crate::web::deser;
 use duo_api as proto;
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value as JsonValue};
 use std::{collections::HashMap, num::NonZeroU64, time::SystemTime};
 use time::{Duration, OffsetDateTime};
 use tracing::Level;
@@ -10,10 +11,10 @@ pub struct Process {
     pub id: String,
     #[serde(rename = "serviceName")]
     pub service_name: String,
-    pub tags: Vec<serde_json::Value>,
+    pub tags: Vec<JsonValue>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct Span {
     pub id: NonZeroU64,
     pub trace_id: NonZeroU64,
@@ -25,12 +26,12 @@ pub struct Span {
     #[serde(default, deserialize_with = "deser::option_miscrosecond")]
     pub end: Option<OffsetDateTime>,
     #[serde(default, deserialize_with = "deser::list_value")]
-    pub tags: Vec<serde_json::Value>,
+    pub tags: Vec<JsonValue>,
     #[serde(skip_deserializing)]
     pub logs: Vec<Log>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Log {
     /// The numeric id in log collection.
     pub idx: usize,
@@ -39,12 +40,13 @@ pub struct Log {
     /// They have no span id if the log emitted out of tracing context.
     pub span_id: Option<NonZeroU64>,
     pub trace_id: Option<NonZeroU64>,
+    // TODO: change level to i32
     pub level: Level,
     pub time: OffsetDateTime,
-    pub fields: HashMap<String, proto::Value>,
+    // Vec of serde_json::Map
+    pub fields: Vec<serde_json::Map<String, JsonValue>>,
 }
 
-#[derive(Debug)]
 pub struct TraceExt {
     pub trace_id: NonZeroU64,
     pub spans: Vec<Span>,
@@ -131,7 +133,14 @@ impl From<proto::Log> for Log {
 
         let mut fields = log.fields;
         fields.insert("level".to_owned(), level.as_str().to_lowercase().into());
-
+        let fields = fields
+            .into_iter()
+            .map(|(key, value)| {
+                let mut map = Map::with_capacity(1);
+                map.insert(key, value.into());
+                map
+            })
+            .collect::<Vec<_>>();
         Log {
             idx: 0,
             process_id: log.process_id,

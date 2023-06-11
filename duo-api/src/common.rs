@@ -1,15 +1,19 @@
 use std::fmt::Display;
 
+use serde_json::{Number, Value as JsonValue};
+
+use crate::ValueEnum;
+
 tonic::include_proto!("rs.duo.common");
 
 impl Value {
     pub fn type_name(&self) -> &str {
         if let Some(inner) = &self.inner {
             match inner {
-                crate::ValueEnum::StrVal(_) => "str",
-                crate::ValueEnum::U64Val(_) => "u64",
-                crate::ValueEnum::I64Val(_) => "i64",
-                crate::ValueEnum::BoolVal(_) => "bool",
+                ValueEnum::StrVal(_) => "str",
+                ValueEnum::U64Val(_) => "u64",
+                ValueEnum::I64Val(_) => "i64",
+                ValueEnum::BoolVal(_) => "bool",
             }
         } else {
             ""
@@ -21,10 +25,10 @@ impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(inner) = &self.inner {
             match inner {
-                crate::ValueEnum::StrVal(v) => write!(f, "{v}"),
-                crate::ValueEnum::U64Val(v) => write!(f, "{v}"),
-                crate::ValueEnum::I64Val(v) => write!(f, "{v}"),
-                crate::ValueEnum::BoolVal(v) => write!(f, "{v}"),
+                ValueEnum::StrVal(v) => write!(f, "{v}"),
+                ValueEnum::U64Val(v) => write!(f, "{v}"),
+                ValueEnum::I64Val(v) => write!(f, "{v}"),
+                ValueEnum::BoolVal(v) => write!(f, "{v}"),
             }
         } else {
             write!(f, "")
@@ -106,5 +110,20 @@ impl From<String> for Value {
 impl From<&dyn std::fmt::Debug> for Value {
     fn from(val: &dyn std::fmt::Debug) -> Self {
         value::Inner::StrVal(format!("{:?}", val)).into()
+    }
+}
+
+impl From<Value> for JsonValue {
+    fn from(val: Value) -> Self {
+        if let Some(inner) = val.inner {
+            match inner {
+                ValueEnum::StrVal(v) => JsonValue::String(v),
+                ValueEnum::U64Val(v) => JsonValue::Number(Number::from(v)),
+                ValueEnum::I64Val(v) => JsonValue::Number(Number::from(v)),
+                ValueEnum::BoolVal(v) => JsonValue::Bool(v),
+            }
+        } else {
+            JsonValue::Null
+        }
     }
 }

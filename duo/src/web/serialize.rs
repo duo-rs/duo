@@ -72,12 +72,12 @@ impl Serialize for Log {
     {
         let mut map = serializer.serialize_map(Some(2))?;
         map.serialize_entry("timestamp", &self.as_micros())?;
-        let fields: Vec<_> = self
-            .fields
-            .iter()
-            .map(|(key, value)| KvFields(key, value))
-            .collect();
-        map.serialize_entry("fields", &fields)?;
+        // let fields: Vec<_> = self
+        //     .fields
+        //     .iter()
+        //     .map(|(map)| KvFields(key, value))
+        //     .collect();
+        map.serialize_entry("fields", &self.fields)?;
         map.end()
     }
 }
