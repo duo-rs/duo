@@ -64,10 +64,11 @@ impl PartitionQuery {
     async fn query_table(&self, table_name: &str, expr: Expr) -> Result<Vec<Value>> {
         let df = self.ctx.read_table(self.get_table(table_name)?)?;
         let batch = df.filter(expr)?.collect().await?;
-        let json_values = arrow_json::writer::record_batches_to_json_rows(&batch)?
-            .into_iter()
-            .map(Value::Object)
-            .collect::<Vec<_>>();
+        let json_values =
+            arrow_json::writer::record_batches_to_json_rows(&batch.iter().collect::<Vec<_>>())?
+                .into_iter()
+                .map(Value::Object)
+                .collect::<Vec<_>>();
         Ok(json_values)
     }
 
@@ -79,7 +80,6 @@ impl PartitionQuery {
             .map(|value| serde_json::from_value::<Span>(value).unwrap())
             .collect())
     }
-
 }
 
 #[cfg(test)]
