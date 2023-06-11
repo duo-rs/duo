@@ -2,7 +2,7 @@ use std::num::NonZeroU64;
 
 use duo_api as proto;
 use serde::{ser::SerializeMap, Serialize, Serializer};
-use serde_json::value::Value::Null;
+use serde_json::{Map, Value};
 
 use crate::{Log, Span, TraceExt};
 
@@ -15,6 +15,8 @@ struct SpanExt<'a> {
 }
 
 pub struct KvFields<'a>(pub &'a String, pub &'a proto::Value);
+
+struct JaegerField<'a>(&'a Map<String, Value>);
 
 struct ReferenceType {
     trace_id: NonZeroU64,
@@ -30,6 +32,37 @@ impl Serialize for ReferenceType {
         map.serialize_entry("refType", "CHILD_OF")?;
         map.serialize_entry("traceID", &self.trace_id.to_string())?;
         map.serialize_entry("spanID", &self.span_id.to_string())?;
+        map.end()
+    }
+}
+
+impl<'a> Serialize for JaegerField<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(3))?;
+        for (key, value) in self.0.iter().take(1) {
+            map.serialize_entry("key", key)?;
+            match value {
+                Value::Bool(v) => {
+                    map.serialize_entry("type", "bool")?;
+                    map.serialize_entry("value", v)?
+                }
+                Value::Number(v) => {
+                    map.serialize_entry("type", "int64")?;
+                    map.serialize_entry("value", v)?
+                }
+                Value::String(v) => {
+                    map.serialize_entry("type", "string")?;
+                    map.serialize_entry("value", v)?
+                }
+                _ => {
+                    // TODO: more types?
+                }
+            }
+        }
+
         map.end()
     }
 }
@@ -72,12 +105,8 @@ impl Serialize for Log {
     {
         let mut map = serializer.serialize_map(Some(2))?;
         map.serialize_entry("timestamp", &self.as_micros())?;
-        // let fields: Vec<_> = self
-        //     .fields
-        //     .iter()
-        //     .map(|(map)| KvFields(key, value))
-        //     .collect();
-        map.serialize_entry("fields", &self.fields)?;
+        let fields: Vec<_> = self.fields.iter().map(JaegerField).collect();
+        map.serialize_entry("fields", &fields)?;
         map.end()
     }
 }
@@ -115,7 +144,7 @@ impl<'a> Serialize for SpanExt<'a> {
         map.serialize_entry("logs", &span.logs)?;
 
         map.serialize_entry("processID", &self.process_id)?;
-        map.serialize_entry("warnings", &Null)?;
+        map.serialize_entry("warnings", &Value::Null)?;
         map.serialize_entry("flags", &1)?;
 
         map.end()
@@ -142,7 +171,7 @@ impl Serialize for TraceExt {
                 .collect::<Vec<_>>(),
         )?;
         map.serialize_entry("processes", &self.processes)?;
-        map.serialize_entry("warnings", &Null)?;
+        map.serialize_entry("warnings", &Value::Null)?;
         map.end()
     }
 }
@@ -157,7 +186,7 @@ impl<T: Serialize + IntoIterator> Serialize for JaegerData<T> {
         map.serialize_entry("total", &0)?;
         map.serialize_entry("limit", &0)?;
         map.serialize_entry("offset", &0)?;
-        map.serialize_entry("errors", &Null)?;
+        map.serialize_entry("errors", &Value::Null)?;
         map.end()
     }
 }

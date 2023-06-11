@@ -44,7 +44,7 @@ pub struct Log {
     pub level: Level,
     pub time: OffsetDateTime,
     // Vec of serde_json::Map
-    pub fields: Vec<serde_json::Map<String, JsonValue>>,
+    pub fields: Vec<Map<String, JsonValue>>,
 }
 
 pub struct TraceExt {
