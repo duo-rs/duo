@@ -1,9 +1,9 @@
 use crate::query::PartitionQuery;
-use crate::{Log, Span, TraceExt, Warehouse};
+use crate::{Span, TraceExt, Warehouse};
 use datafusion::prelude::*;
 use std::borrow::Cow;
 use std::{collections::HashMap, num::NonZeroU64};
-use tracing::Level;
+use tracing::debug;
 
 use super::routes::QueryParameters;
 
@@ -30,7 +30,7 @@ impl<'a> TraceQuery<'a> {
             .unwrap()
             .into_iter()
             .map(Cow::Owned);
-        println!("spans from parquet: {}", spans.len());
+        debug!("spans from parquet: {}", spans.len());
 
         let mut total_spans = self.0.spans().iter().map(Cow::Borrowed).collect::<Vec<_>>();
         total_spans.extend(spans);
@@ -77,6 +77,29 @@ impl<'a> TraceQuery<'a> {
                 .push(span);
         }
 
+        let trace_ids = traces.keys().collect::<Vec<_>>();
+        let mut trace_logs = self
+            .0
+            .logs
+            .iter()
+            .filter(|log| {
+                if let Some(id) = log.trace_id {
+                    trace_ids.contains(&&id)
+                } else {
+                    false
+                }
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        let logs = pq
+            .query_log(
+                col("trace_id").in_list(trace_ids.iter().map(|id| lit(id.get())).collect(), false),
+            )
+            .await
+            .unwrap()
+            .into_iter();
+        debug!("span logs from parquet: {}", logs.len());
+        trace_logs.extend(logs);
         traces
             .into_iter()
             .take(limit)
@@ -86,7 +109,7 @@ impl<'a> TraceQuery<'a> {
                     .iter()
                     .map(|span| {
                         let mut span = span.clone().into_owned();
-                        correlate_span_logs(&self.0.logs, &mut span);
+                        span.correlate_span_logs(&trace_logs);
                         span
                     })
                     .collect(),
@@ -122,31 +145,12 @@ impl<'a> TraceQuery<'a> {
                     .into_iter()
                     .map(|span| {
                         let mut span = span.clone().into_owned();
-                        correlate_span_logs(&self.0.logs, &mut span);
+                        span.correlate_span_logs(&self.0.logs);
                         span
                     })
                     .collect(),
                 processes: self.0.processes(),
             })
         }
-    }
-}
-
-fn correlate_span_logs(logs: &[Log], span: &mut Span) {
-    let mut errors = 0;
-    span.logs = logs
-        .iter()
-        .filter(|log| log.span_id == Some(span.id))
-        .inspect(|log| errors += (log.level == Level::ERROR) as i32)
-        .cloned()
-        .collect();
-
-    // Auto insert 'error = true' tag, this will help Jaeger UI show error icon.
-    if errors > 0 {
-        span.tags.push(
-            [(String::from("error"), serde_json::Value::Bool(true))]
-                .into_iter()
-                .collect(),
-        );
     }
 }

@@ -10,7 +10,7 @@ use datafusion::{
     },
     prelude::{Expr, SessionContext},
 };
-use serde::{de::DeserializeOwned, Deserialize};
+use serde::de::DeserializeOwned;
 use serde_json::Value;
 use time::{Duration, OffsetDateTime};
 
@@ -73,8 +73,9 @@ impl PartitionQuery {
         expr: Expr,
     ) -> Result<impl IntoIterator<Item = T>> {
         let df = self.ctx.read_table(self.get_table(table_name).await?)?;
-        let batch = df.filter(expr)?.collect().await?;
-        let json_values = record_batches_to_json_rows(&batch.iter().collect::<Vec<_>>())?
+        let batch = df.filter(expr)?.collect().await.unwrap();
+        let json_values = record_batches_to_json_rows(&batch.iter().collect::<Vec<_>>())
+            .unwrap()
             .into_iter()
             .map(|value| serde_json::from_value::<T>(Value::Object(value)).unwrap());
         Ok(json_values)
@@ -83,6 +84,14 @@ impl PartitionQuery {
     pub async fn query_span(&self, expr: Expr) -> Result<Vec<Span>> {
         Ok(self
             .query_table(TABLE_SPAN, expr)
+            .await?
+            .into_iter()
+            .collect())
+    }
+
+    pub async fn query_log(&self, expr: Expr) -> Result<Vec<Log>> {
+        Ok(self
+            .query_table(TABLE_LOG, expr)
             .await?
             .into_iter()
             .collect())

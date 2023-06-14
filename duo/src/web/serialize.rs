@@ -13,7 +13,11 @@ struct SpanExt<'a> {
     process_id: &'a String,
 }
 
+// Due to Jaeger has different format, here we
+// use newtype to reimplement the searialization.
 struct JaegerField<'a>(&'a Map<String, Value>);
+struct JaegerLog<'a>(&'a Log);
+struct JaegerProcess<'a>(&'a Process);
 
 struct ReferenceType {
     trace_id: NonZeroU64,
@@ -64,19 +68,6 @@ impl<'a> Serialize for JaegerField<'a> {
     }
 }
 
-impl Serialize for Log {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut map = serializer.serialize_map(Some(2))?;
-        map.serialize_entry("timestamp", &self.as_micros())?;
-        let fields: Vec<_> = self.fields.iter().map(JaegerField).collect();
-        map.serialize_entry("fields", &fields)?;
-        map.end()
-    }
-}
-
 impl<'a> Serialize for SpanExt<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -108,8 +99,7 @@ impl<'a> Serialize for SpanExt<'a> {
         map.serialize_entry("duration", &span.duration().whole_microseconds())?;
         let tags: Vec<_> = span.tags.iter().map(JaegerField).collect();
         map.serialize_entry("tags", &tags)?;
-        map.serialize_entry("logs", &span.logs)?;
-
+        map.serialize_entry("logs", &span.logs.iter().map(JaegerLog).collect::<Vec<_>>())?;
         map.serialize_entry("processID", &self.process_id)?;
         map.serialize_entry("warnings", &Value::Null)?;
         map.serialize_entry("flags", &1)?;
@@ -138,28 +128,10 @@ impl Serialize for TraceExt {
                 .collect::<Vec<_>>(),
         )?;
 
-        // Due to Jaeger has different format, here we
-        // use newtype to reimplement the searialization.
-        struct ProcessType<'a>(&'a Process);
-        impl<'a> Serialize for ProcessType<'a> {
-            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-            where
-                S: serde::Serializer,
-            {
-                let inner = self.0;
-                let mut map = serializer.serialize_map(Some(3))?;
-                map.serialize_entry("id", &inner.id)?;
-                map.serialize_entry("serviceName", &inner.service_name)?;
-                let tags: Vec<_> = inner.tags.iter().map(JaegerField).collect();
-                map.serialize_entry("tags", &tags)?;
-                map.end()
-            }
-        }
-
         let processes = self
             .processes
             .iter()
-            .map(|(key, value)| (key, ProcessType(value)))
+            .map(|(key, value)| (key, JaegerProcess(value)))
             .collect::<HashMap<_, _>>();
         map.serialize_entry("processes", &processes)?;
         map.serialize_entry("warnings", &Value::Null)?;
@@ -178,6 +150,34 @@ impl<T: Serialize + IntoIterator> Serialize for JaegerData<T> {
         map.serialize_entry("limit", &0)?;
         map.serialize_entry("offset", &0)?;
         map.serialize_entry("errors", &Value::Null)?;
+        map.end()
+    }
+}
+
+impl<'a> Serialize for JaegerLog<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(2))?;
+        map.serialize_entry("timestamp", &self.0.as_micros())?;
+        let fields: Vec<_> = self.0.fields.iter().map(JaegerField).collect();
+        map.serialize_entry("fields", &fields)?;
+        map.end()
+    }
+}
+
+impl<'a> Serialize for JaegerProcess<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let inner = self.0;
+        let mut map = serializer.serialize_map(Some(3))?;
+        map.serialize_entry("id", &inner.id)?;
+        map.serialize_entry("serviceName", &inner.service_name)?;
+        let tags: Vec<_> = inner.tags.iter().map(JaegerField).collect();
+        map.serialize_entry("tags", &tags)?;
         map.end()
     }
 }

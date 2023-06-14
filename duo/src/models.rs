@@ -68,6 +68,25 @@ impl Span {
     pub fn is_intact(&self) -> bool {
         self.end.is_some()
     }
+
+    pub fn correlate_span_logs(&mut self, logs: &[Log]) {
+        let mut errors = 0;
+        self.logs = logs
+            .iter()
+            .filter(|log| log.span_id == Some(self.id))
+            .inspect(|log| errors += (log.level == Level::ERROR) as i32)
+            .cloned()
+            .collect();
+
+        // Auto insert 'error = true' tag, this will help Jaeger UI show error icon.
+        if errors > 0 {
+            self.tags.push(
+                [(String::from("error"), serde_json::Value::Bool(true))]
+                    .into_iter()
+                    .collect(),
+            );
+        }
+    }
 }
 
 impl Log {
