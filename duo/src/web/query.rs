@@ -1,8 +1,9 @@
 use crate::query::PartitionQuery;
-use crate::{Span, TraceExt, Warehouse};
+use crate::{Log, Span, TraceExt, Warehouse};
 use datafusion::prelude::*;
 use std::borrow::Cow;
 use std::{collections::HashMap, num::NonZeroU64};
+use tracing::Level;
 
 use super::routes::QueryParameters;
 
@@ -85,7 +86,7 @@ impl<'a> TraceQuery<'a> {
                     .iter()
                     .map(|span| {
                         let mut span = span.clone().into_owned();
-                        self.0.correlate_span_logs(&mut span);
+                        correlate_span_logs(&self.0.logs, &mut span);
                         span
                     })
                     .collect(),
@@ -121,12 +122,31 @@ impl<'a> TraceQuery<'a> {
                     .into_iter()
                     .map(|span| {
                         let mut span = span.clone().into_owned();
-                        self.0.correlate_span_logs(&mut span);
+                        correlate_span_logs(&self.0.logs, &mut span);
                         span
                     })
                     .collect(),
                 processes: self.0.processes(),
             })
         }
+    }
+}
+
+fn correlate_span_logs(logs: &[Log], span: &mut Span) {
+    let mut errors = 0;
+    span.logs = logs
+        .iter()
+        .filter(|log| log.span_id == Some(span.id))
+        .inspect(|log| errors += (log.level == Level::ERROR) as i32)
+        .cloned()
+        .collect();
+
+    // Auto insert 'error = true' tag, this will help Jaeger UI show error icon.
+    if errors > 0 {
+        span.tags.push(
+            [(String::from("error"), serde_json::Value::Bool(true))]
+                .into_iter()
+                .collect(),
+        );
     }
 }

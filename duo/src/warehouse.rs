@@ -3,7 +3,6 @@ use std::{
     fs::File,
     io::Write,
     mem,
-    num::NonZeroU64,
     path::Path,
 };
 
@@ -15,7 +14,6 @@ use crate::{
 };
 use anyhow::Result;
 use duo_api as proto;
-use tracing::Level;
 
 #[derive(Default)]
 pub struct Warehouse {
@@ -23,8 +21,6 @@ pub struct Warehouse {
     services: HashMap<String, Vec<Process>>,
     pub spans: Vec<Span>,
     pub logs: Vec<Log>,
-    // <span_id, Vec<log id>>
-    pub span_log_map: HashMap<NonZeroU64, Vec<usize>>,
 }
 
 impl Warehouse {
@@ -92,27 +88,6 @@ impl Warehouse {
             .collect()
     }
 
-    pub(crate) fn correlate_span_logs(&self, span: &mut Span) {
-        if let Some(idxs) = self.span_log_map.get(&span.id) {
-            let mut errors = 0;
-            span.logs = idxs
-                .iter()
-                .filter_map(|idx| self.logs.get(*idx))
-                .inspect(|log| errors += (log.level == Level::ERROR) as i32)
-                .cloned()
-                .collect();
-
-            // Auto insert 'error = true' tag, this will help Jaeger UI show error icon.
-            if errors > 0 {
-                span.tags.push(
-                    [(String::from("error"), serde_json::Value::Bool(true))]
-                        .into_iter()
-                        .collect(),
-                );
-            }
-        }
-    }
-
     /// Register new process and return the process id.
     pub(crate) fn register_process(&mut self, process: proto::Process) -> Result<String> {
         let service_name = process.name;
@@ -138,20 +113,7 @@ impl Warehouse {
         self.spans.extend(data.spans);
         // Reserve capacity advanced.
         self.logs.reserve(data.logs.len());
-        let base_idx = self.logs.len();
-        data.logs.into_iter().enumerate().for_each(|(i, mut log)| {
-            let idx = base_idx + i;
-
-            // Exclude those logs without span_id,
-            // normally they are not emitted in tracing context.
-            if let Some(span_id) = log.span_id {
-                let log_idxs = self.span_log_map.entry(span_id).or_default();
-                log_idxs.push(idx);
-            }
-
-            log.idx = idx;
-            self.logs.push(log);
-        });
+        self.logs.extend(data.logs);
     }
 
     fn write_process<P: AsRef<Path>>(&self, path: P) -> Result<()> {

@@ -33,9 +33,6 @@ pub struct Span {
 
 #[derive(Clone, Deserialize)]
 pub struct Log {
-    /// The numeric id in log collection.
-    #[serde(skip)]
-    pub idx: usize,
     pub process_id: String,
     /// The span's id the log belong to.
     /// They have no span id if the log emitted out of tracing context.
@@ -138,7 +135,6 @@ impl From<proto::Log> for Log {
             .map(|(key, value)| [(key, value.into())].into_iter().collect())
             .collect::<Vec<_>>();
         Log {
-            idx: 0,
             process_id: log.process_id,
             span_id: log.span_id.and_then(NonZeroU64::new),
             trace_id: log.trace_id.and_then(NonZeroU64::new),
