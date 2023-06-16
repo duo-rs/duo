@@ -101,8 +101,8 @@ impl Warehouse {
             tags: process
                 .tags
                 .into_iter()
-                .map(|(key, value)| [(key, value.into())].into_iter().collect())
-                .collect::<Vec<_>>(),
+                .map(|(key, value)| (key, value.into()))
+                .collect(),
         });
         self.write_process(".")?;
         Ok(process_id)

@@ -2,7 +2,7 @@ use crate::query::PartitionQuery;
 use crate::{Span, TraceExt, Warehouse};
 use datafusion::prelude::*;
 use std::borrow::Cow;
-use std::{collections::HashMap, num::NonZeroU64};
+use std::collections::HashMap;
 use tracing::debug;
 
 use super::routes::QueryParameters;
@@ -21,7 +21,7 @@ impl<'a> TraceQuery<'a> {
         let process_prefix = p.service;
         let limit = p.limit.unwrap_or(DEFAUT_TRACE_LIMIT);
         // <trace_id, spans>
-        let mut traces = HashMap::<NonZeroU64, Vec<Cow<Span>>>::new();
+        let mut traces = HashMap::<u64, Vec<Cow<Span>>>::new();
         let pq = PartitionQuery::new(".".into(), p.start.unwrap(), p.end.unwrap());
         let expr = col("process_id").like(lit(format!("{process_prefix}%")));
         let spans = pq
@@ -93,7 +93,7 @@ impl<'a> TraceQuery<'a> {
             .collect::<Vec<_>>();
         let logs = pq
             .query_log(
-                col("trace_id").in_list(trace_ids.iter().map(|id| lit(id.get())).collect(), false),
+                col("trace_id").in_list(trace_ids.into_iter().map(|id| lit(*id)).collect(), false),
             )
             .await
             .unwrap()
@@ -118,7 +118,7 @@ impl<'a> TraceQuery<'a> {
             .collect()
     }
 
-    pub(super) async fn get_trace_by_id(&self, trace_id: NonZeroU64) -> Option<TraceExt> {
+    pub(super) async fn get_trace_by_id(&self, trace_id: u64) -> Option<TraceExt> {
         let mut trace_spans = self
             .0
             .spans()
@@ -128,7 +128,7 @@ impl<'a> TraceQuery<'a> {
             .collect::<Vec<_>>();
         if trace_spans.is_empty() {
             let spans = PartitionQuery::recent_hours(".".into(), 12)
-                .query_span(col("trace_id").eq(lit(trace_id.get())))
+                .query_span(col("trace_id").eq(lit(trace_id)))
                 .await
                 .unwrap()
                 .into_iter()

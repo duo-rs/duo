@@ -1,7 +1,7 @@
-use std::{collections::HashMap, num::NonZeroU64};
+use std::collections::HashMap;
 
 use serde::{ser::SerializeMap, Serialize, Serializer};
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 use crate::{Log, Process, Span, TraceExt};
 
@@ -9,19 +9,19 @@ use super::JaegerData;
 
 struct SpanExt<'a> {
     inner: &'a Span,
-    trace_id: NonZeroU64,
+    trace_id: u64,
     process_id: &'a String,
 }
 
 // Due to Jaeger has different format, here we
 // use newtype to reimplement the searialization.
-struct JaegerField<'a>(&'a Map<String, Value>);
+struct JaegerField<'a>((&'a String, &'a Value));
 struct JaegerLog<'a>(&'a Log);
 struct JaegerProcess<'a>(&'a Process);
 
 struct ReferenceType {
-    trace_id: NonZeroU64,
-    span_id: NonZeroU64,
+    trace_id: u64,
+    span_id: u64,
 }
 
 impl Serialize for ReferenceType {
@@ -42,25 +42,24 @@ impl<'a> Serialize for JaegerField<'a> {
     where
         S: Serializer,
     {
-        let mut map = serializer.serialize_map(Some(3))?;
-        for (key, value) in self.0.iter().take(1) {
-            map.serialize_entry("key", key)?;
-            match value {
-                Value::Bool(v) => {
-                    map.serialize_entry("type", "bool")?;
-                    map.serialize_entry("value", v)?
-                }
-                Value::Number(v) => {
-                    map.serialize_entry("type", "int64")?;
-                    map.serialize_entry("value", v)?
-                }
-                Value::String(v) => {
-                    map.serialize_entry("type", "string")?;
-                    map.serialize_entry("value", v)?
-                }
-                _ => {
-                    // TODO: more types?
-                }
+        let mut map: <S as Serializer>::SerializeMap = serializer.serialize_map(Some(3))?;
+        let (key, value) = self.0;
+        map.serialize_entry("key", key)?;
+        match value {
+            Value::Bool(v) => {
+                map.serialize_entry("type", "bool")?;
+                map.serialize_entry("value", v)?
+            }
+            Value::Number(v) => {
+                map.serialize_entry("type", "int64")?;
+                map.serialize_entry("value", v)?
+            }
+            Value::String(v) => {
+                map.serialize_entry("type", "string")?;
+                map.serialize_entry("value", v)?
+            }
+            _ => {
+                // TODO: more types?
             }
         }
 

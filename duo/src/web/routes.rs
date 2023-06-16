@@ -1,4 +1,3 @@
-use std::num::NonZeroU64;
 use std::sync::Arc;
 
 use axum::extract::{Extension, Path, Query};
@@ -63,7 +62,7 @@ pub(super) async fn trace(
     Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
 ) -> impl IntoResponse {
     let warehouse = warehouse.read();
-    let trace_id = id.parse::<u64>().map(NonZeroU64::new).ok().flatten();
+    let trace_id = id.parse::<u64>().ok();
 
     match trace_id {
         Some(trace_id) => {
@@ -87,5 +86,4 @@ pub(super) async fn stats(
             "spans": warehouse.spans.len(),
     })
     .to_string()
-    // format!("{:?}", warehouse)
 }

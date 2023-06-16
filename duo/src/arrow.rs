@@ -1,6 +1,6 @@
 use arrow_json::{reader::infer_json_schema_from_iterator, ReaderBuilder};
 use serde_json::{Map, Value as JsonValue};
-use std::{num::NonZeroU64, sync::Arc};
+use std::sync::Arc;
 
 use crate::{Log, Span};
 use anyhow::Result;
@@ -39,9 +39,9 @@ pub struct LogRecordBatchBuilder {
 
 impl SpanRecordBatchBuilder {
     pub fn append_span(&mut self, span: Span) {
-        self.span_ids.push(span.id.get());
-        self.parent_ids.push(span.parent_id.map(|id| id.get()));
-        self.trace_ids.push(span.trace_id.get());
+        self.span_ids.push(span.id);
+        self.parent_ids.push(span.parent_id);
+        self.trace_ids.push(span.trace_id);
         self.names.push(span.name);
         self.process_ids.push(span.process_id);
         self.start_times
@@ -74,16 +74,16 @@ impl SpanRecordBatchBuilder {
 }
 
 impl LogRecordBatchBuilder {
-    pub fn append_log(&mut self, mut log: Log) {
+    pub fn append_log(&mut self, log: Log) {
         let mut map = Map::new();
         map.insert("process_id".into(), log.process_id.into());
-        map.insert("span_id".into(), log.span_id.map(NonZeroU64::get).into());
-        map.insert("trace_id".into(), log.trace_id.map(NonZeroU64::get).into());
+        map.insert("span_id".into(), log.span_id.into());
+        map.insert("trace_id".into(), log.trace_id.into());
         map.insert("level".into(), log.level.as_str().into());
         let timestamp_us = (log.time.unix_timestamp_nanos() / 1000) as i64;
         map.insert("time".into(), timestamp_us.into());
-        for field in &mut log.fields {
-            map.append(field);
+        for (key, value) in log.fields {
+            map.insert(key, value);
         }
         self.data.push(JsonValue::Object(map));
     }

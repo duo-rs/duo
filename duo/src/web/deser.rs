@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 use serde::de;
-use serde_json::{Map, Value};
+use serde_json::Value;
 use time::{Duration, OffsetDateTime};
 
 pub(super) fn option_ignore_error<'de, T, D>(d: D) -> Result<Option<T>, D::Error>
@@ -24,7 +26,7 @@ where
     d.deserialize_any(MicroSecondsTimestampVisitor)
 }
 
-pub fn map_list<'de, D>(d: D) -> Result<Vec<Map<String, Value>>, D::Error>
+pub fn map_list<'de, D>(d: D) -> Result<HashMap<String, Value>, D::Error>
 where
     D: de::Deserializer<'de>,
 {
@@ -44,6 +46,7 @@ pub mod level {
     use serde::{Deserialize, Deserializer, Serializer};
     use tracing::Level;
 
+    #[allow(unused)]
     pub fn serialize<S>(level: &Level, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -63,7 +66,7 @@ pub mod level {
 struct ListValueVisitor;
 
 impl<'de> de::Visitor<'de> for ListValueVisitor {
-    type Value = Vec<Map<String, Value>>;
+    type Value = HashMap<String, Value>;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(formatter, "an array string")
