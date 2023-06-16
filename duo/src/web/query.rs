@@ -119,6 +119,7 @@ impl<'a> TraceQuery<'a> {
     }
 
     pub(super) async fn get_trace_by_id(&self, trace_id: u64) -> Option<TraceExt> {
+        let pq = PartitionQuery::recent_hours(".".into(), 12);
         let mut trace_spans = self
             .0
             .spans()
@@ -127,7 +128,7 @@ impl<'a> TraceQuery<'a> {
             .map(Cow::Borrowed)
             .collect::<Vec<_>>();
         if trace_spans.is_empty() {
-            let spans = PartitionQuery::recent_hours(".".into(), 12)
+            let spans = pq
                 .query_span(col("trace_id").eq(lit(trace_id)))
                 .await
                 .unwrap()
@@ -139,13 +140,26 @@ impl<'a> TraceQuery<'a> {
         if trace_spans.is_empty() {
             None
         } else {
+            let mut trace_logs = self
+                .0
+                .logs
+                .iter()
+                .filter(|log| log.trace_id == Some(trace_id))
+                .cloned()
+                .collect::<Vec<_>>();
+            let logs = pq
+                .query_log(col("trace_id").eq(lit(trace_id)))
+                .await
+                .unwrap();
+            debug!("trace `{trace_id}` logs from parquet: {}", logs.len());
+            trace_logs.extend(logs);
             Some(TraceExt {
                 trace_id,
                 spans: trace_spans
                     .into_iter()
                     .map(|span| {
                         let mut span = span.clone().into_owned();
-                        span.correlate_span_logs(&self.0.logs);
+                        span.correlate_span_logs(&trace_logs);
                         span
                     })
                     .collect(),
