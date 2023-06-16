@@ -39,15 +39,15 @@ pub struct LogRecordBatchBuilder {
 
 impl SpanRecordBatchBuilder {
     pub fn append_span(&mut self, span: Span) {
+        let start_time = span.start_as_micros();
+        let end_time = span.end_as_micros();
         self.span_ids.push(span.id);
         self.parent_ids.push(span.parent_id);
         self.trace_ids.push(span.trace_id);
         self.names.push(span.name);
         self.process_ids.push(span.process_id);
-        self.start_times
-            .push((span.start.unix_timestamp_nanos() / 1000) as i64);
-        self.end_times
-            .push(span.end.map(|t| (t.unix_timestamp_nanos() / 1000) as i64));
+        self.start_times.push(start_time);
+        self.end_times.push(end_time);
         self.tags_list
             .push(serde_json::to_string(&span.tags).unwrap());
     }
@@ -76,12 +76,12 @@ impl SpanRecordBatchBuilder {
 impl LogRecordBatchBuilder {
     pub fn append_log(&mut self, log: Log) {
         let mut map = Map::new();
+        let time = log.as_micros();
         map.insert("process_id".into(), log.process_id.into());
         map.insert("span_id".into(), log.span_id.into());
         map.insert("trace_id".into(), log.trace_id.into());
         map.insert("level".into(), log.level.as_str().into());
-        let timestamp_us = (log.time.unix_timestamp_nanos() / 1000) as i64;
-        map.insert("time".into(), timestamp_us.into());
+        map.insert("time".into(), time.into());
         for (key, value) in log.fields {
             map.insert(key, value);
         }

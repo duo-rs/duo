@@ -54,8 +54,12 @@ pub struct TraceExt {
 }
 
 impl Span {
-    pub fn as_micros(&self) -> i64 {
+    pub fn start_as_micros(&self) -> i64 {
         (self.start.unix_timestamp_nanos() / 1000) as i64
+    }
+
+    pub fn end_as_micros(&self) -> Option<i64> {
+        self.end.map(|t| (t.unix_timestamp_nanos() / 1000) as i64)
     }
 
     pub fn duration(&self) -> Duration {

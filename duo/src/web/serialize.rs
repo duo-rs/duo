@@ -94,7 +94,7 @@ impl<'a> Serialize for SpanExt<'a> {
             // The span isn't intact, add * to the operationName for indication.
             map.serialize_entry("operationName", &format!("{}*", span.name))?;
         }
-        map.serialize_entry("startTime", &span.as_micros())?;
+        map.serialize_entry("startTime", &span.start_as_micros())?;
         map.serialize_entry("duration", &span.duration().whole_microseconds())?;
         let tags: Vec<_> = span.tags.iter().map(JaegerField).collect();
         map.serialize_entry("tags", &tags)?;
