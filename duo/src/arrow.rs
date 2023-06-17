@@ -90,7 +90,7 @@ impl LogRecordBatchBuilder {
 
     pub fn into_record_batch(self) -> Result<RecordBatch> {
         let inferred_schema = infer_json_schema_from_iterator(self.data.iter().map(Ok))?;
-        let mut decoder = ReaderBuilder::new(Arc::new(dbg!(inferred_schema))).build_decoder()?;
+        let mut decoder = ReaderBuilder::new(Arc::new(inferred_schema)).build_decoder()?;
         decoder.serialize(&self.data)?;
         let batch = decoder.flush()?.expect("Empty record batch");
         Ok(batch)

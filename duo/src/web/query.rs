@@ -3,6 +3,7 @@ use crate::{Span, TraceExt, Warehouse};
 use datafusion::prelude::*;
 use std::borrow::Cow;
 use std::collections::HashMap;
+use time::{Duration, OffsetDateTime};
 use tracing::debug;
 
 use super::routes::QueryParameters;
@@ -22,7 +23,12 @@ impl<'a> TraceQuery<'a> {
         let limit = p.limit.unwrap_or(DEFAUT_TRACE_LIMIT);
         // <trace_id, spans>
         let mut traces = HashMap::<u64, Vec<Cow<Span>>>::new();
-        let pq = PartitionQuery::new(".".into(), p.start.unwrap(), p.end.unwrap());
+        let pq = PartitionQuery::new(
+            ".".into(),
+            p.start
+                .unwrap_or_else(|| OffsetDateTime::now_utc() - Duration::minutes(15)),
+            p.end.unwrap_or(OffsetDateTime::now_utc()),
+        );
         let expr = col("process_id").like(lit(format!("{process_prefix}%")));
         let spans = pq
             .query_span(expr)

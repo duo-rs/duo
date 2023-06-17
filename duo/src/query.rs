@@ -37,7 +37,7 @@ impl PartitionQuery {
 
     pub fn recent_hours(root_path: PathBuf, hours: i64) -> Self {
         let now = OffsetDateTime::now_utc();
-        let hours_ago = dbg!(now - Duration::hours(hours));
+        let hours_ago = now - Duration::hours(hours);
         Self::new(root_path, hours_ago, now)
     }
 
