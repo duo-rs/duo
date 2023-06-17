@@ -100,7 +100,7 @@ where
                 None
             };
 
-            let rand_id = ThreadRng::default().gen();
+            let rand_id = ThreadRng::default().gen::<u32>() as u64;
             // Obtain parent_id and trace_id from parent span.
             let (parent_id, trace_id) = parent_span
                 .and_then(|span_ref| {
