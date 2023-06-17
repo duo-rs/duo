@@ -10,6 +10,7 @@ arrow-schema = "40"
 arrow-json = "40"
 axum = "0.6"
 rand = "0.8"
+include_dir = "0.7"
 clap = { version = "3", default-features = false, features = ["std", "derive"] }
 duo-api = { version = "0.1", path = "../duo-api" }
 parking_lot = { version = "0.12", features = ["send_guard"] }
