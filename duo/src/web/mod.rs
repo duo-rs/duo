@@ -1,4 +1,4 @@
-use std::{net::SocketAddr, sync::Arc};
+use std::{env, net::SocketAddr, sync::Arc};
 
 use axum::{
     extract::Extension,
@@ -20,19 +20,19 @@ pub mod serialize;
 
 // Frontend HTML page.
 static ROOT_PAGE: Html<&'static str> = Html(include_str!("../../ui/index.html"));
-static TMP_DUO_STATIC_DIR: &str = "/tmp/__duo_ui";
 pub struct JaegerData<I: IntoIterator>(pub I);
 
 pub async fn run_web_server(warehouse: Arc<RwLock<Warehouse>>, port: u16) -> anyhow::Result<()> {
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
     let layer = ServiceBuilder::new().layer(Extension(warehouse));
 
-    include_dir::include_dir!("$CARGO_MANIFEST_DIR/ui/static").extract(TMP_DUO_STATIC_DIR)?;
+    let tmp_duo_dir = env::temp_dir().join("__duo_ui");
+    include_dir::include_dir!("$CARGO_MANIFEST_DIR/ui/static").extract(&tmp_duo_dir)?;
     let app = Router::new()
         .route("/", get(|| async { ROOT_PAGE }))
         .nest_service(
             "/static",
-            get_service(ServeDir::new(TMP_DUO_STATIC_DIR)).handle_error(|error| async move {
+            get_service(ServeDir::new(tmp_duo_dir)).handle_error(|error| async move {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("Unhandled internal error: {}", error),
