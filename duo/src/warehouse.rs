@@ -1,5 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
+    fmt::Debug,
     fs::File,
     io::Write,
     mem,
@@ -21,6 +22,16 @@ pub struct Warehouse {
     services: HashMap<String, Vec<Process>>,
     pub spans: Vec<Span>,
     pub logs: Vec<Log>,
+}
+
+impl Debug for Warehouse {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Warehouse")
+            .field("service count", &self.services.len())
+            .field("span count", &self.spans.len())
+            .field("log count", &self.logs.len())
+            .finish()
+    }
 }
 
 impl Warehouse {

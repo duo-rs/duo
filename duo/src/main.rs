@@ -1,7 +1,8 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use anyhow::Result;
 use clap::StructOpt;
+use duo_subscriber::DuoLayer;
 use parking_lot::RwLock;
 use tracing::Level;
 use tracing_subscriber::{filter::Targets, fmt, layer::SubscriberExt, util::SubscriberInitExt};
@@ -57,10 +58,6 @@ enum Commands {
 #[tokio::main]
 async fn main() -> Result<()> {
     println!("{}", DUO_BANNER);
-    tracing_subscriber::registry()
-        .with(fmt::layer())
-        .with(Targets::new().with_target("duo", Level::DEBUG))
-        .init();
     let warehouse = Arc::new(RwLock::new(Warehouse::load(".")?));
 
     match Cli::parse().command {
@@ -69,9 +66,24 @@ async fn main() -> Result<()> {
             grpc_port,
         } => {
             spawn_grpc_server(Arc::clone(&warehouse), grpc_port);
+
+            tokio::spawn(async move {
+                // wait for grpc service ready
+                tokio::time::sleep(Duration::from_secs(2)).await;
+                let duo_layer = DuoLayer::new(
+                    "duo",
+                    format!("http://127.0.0.1:{}", grpc_port).parse().unwrap(),
+                )
+                .await;
+                tracing_subscriber::registry()
+                    .with(fmt::layer())
+                    .with(duo_layer)
+                    .with(Targets::new().with_target("duo", Level::INFO))
+                    .init();
+            });
+
             run_web_server(warehouse, web_port).await?;
         }
     }
-
     Ok(())
 }

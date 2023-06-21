@@ -32,6 +32,7 @@ pub(super) struct QueryParameters {
     pub min_duration: Option<Duration>,
 }
 
+#[tracing::instrument]
 pub(super) async fn traces(
     Query(parameters): Query<QueryParameters>,
     Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
@@ -42,6 +43,7 @@ pub(super) async fn traces(
     ))
 }
 
+#[tracing::instrument]
 pub(super) async fn services(
     Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
 ) -> impl IntoResponse {
@@ -49,6 +51,7 @@ pub(super) async fn services(
     Json(JaegerData(warehouse.service_names()))
 }
 
+#[tracing::instrument]
 pub(super) async fn operations(
     Path(service): Path<String>,
     Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
@@ -57,6 +60,7 @@ pub(super) async fn operations(
     Json(JaegerData(warehouse.span_names(&service)))
 }
 
+#[tracing::instrument]
 pub(super) async fn trace(
     Path(id): Path<String>,
     Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
@@ -76,6 +80,7 @@ pub(super) async fn trace(
     }
 }
 
+#[tracing::instrument]
 pub(super) async fn stats(
     Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
 ) -> impl IntoResponse {
