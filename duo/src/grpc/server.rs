@@ -58,11 +58,11 @@ impl Instrument for DuoServer {
         &self,
         request: Request<RegisterProcessRequest>,
     ) -> Result<Response<RegisterProcessResponse>, Status> {
-        info!("register process: {:?}", request);
         let process = request
             .into_inner()
             .process
             .ok_or_else(|| tonic::Status::invalid_argument("missing process"))?;
+        info!("register process: {}", process.name);
         let process_id = self
             .warehouse
             .write()
@@ -75,11 +75,11 @@ impl Instrument for DuoServer {
         &self,
         request: Request<RecordSpanRequest>,
     ) -> Result<Response<RecordSpanResponse>, Status> {
-        debug!("record span: {:?}", request);
         let span = request
             .into_inner()
             .span
             .ok_or_else(|| tonic::Status::invalid_argument("missing span"))?;
+        debug!(target: "duo_internal", "record span: {}", span.name);
         self.aggregator.write().record_span(span);
         Ok(Response::new(RecordSpanResponse {}))
     }
@@ -88,7 +88,7 @@ impl Instrument for DuoServer {
         &self,
         request: Request<RecordEventRequest>,
     ) -> Result<Response<RecordEventResponse>, Status> {
-        debug!("record event, {:?}", request);
+        debug!(target: "duo_internal", "record event, {:?}", request);
 
         let log = request
             .into_inner()
