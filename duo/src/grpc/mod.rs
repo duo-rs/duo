@@ -13,11 +13,11 @@ mod server;
 
 pub fn spawn_server(warehouse: Arc<RwLock<Warehouse>>, port: u16) {
     tokio::spawn(async move {
-        let addr = SocketAddr::from(([127, 0, 0, 1], port));
+        let addr = SocketAddr::from(([0, 0, 0, 0], port));
         let mut service = DuoServer::new(warehouse);
         service.run();
 
-        println!("gRPC server listening on http://{}\n", addr);
+        println!("gRPC server listening on grpc://{}", addr);
         Server::builder()
             .add_service(InstrumentServer::new(service))
             .serve(addr)

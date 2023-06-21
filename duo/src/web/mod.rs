@@ -23,7 +23,7 @@ static ROOT_PAGE: Html<&'static str> = Html(include_str!("../../ui/index.html"))
 pub struct JaegerData<I: IntoIterator>(pub I);
 
 pub async fn run_web_server(warehouse: Arc<RwLock<Warehouse>>, port: u16) -> anyhow::Result<()> {
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let layer = ServiceBuilder::new().layer(Extension(warehouse));
 
     let tmp_duo_dir = env::temp_dir().join("__duo_ui");
@@ -47,7 +47,7 @@ pub async fn run_web_server(warehouse: Arc<RwLock<Warehouse>>, port: u16) -> any
         .fallback(fallback)
         .layer(layer);
 
-    println!("Web server listening on http://{}\n", addr);
+    println!("Web server listening on http://{}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await?;

@@ -14,3 +14,5 @@ Cargo.lock
 
 *.parquet
 .history
+
+process.json
