@@ -74,7 +74,7 @@ impl SpanRecordBatchBuilder {
 }
 
 impl LogRecordBatchBuilder {
-    pub fn append_log(&mut self, log: Log) {
+    pub fn append_log(&mut self, mut log: Log) {
         let mut map = Map::new();
         let time = log.as_micros();
         map.insert("process_id".into(), log.process_id.into());
@@ -82,7 +82,8 @@ impl LogRecordBatchBuilder {
         map.insert("trace_id".into(), log.trace_id.into());
         map.insert("level".into(), log.level.as_str().into());
         map.insert("time".into(), time.into());
-        for (key, value) in log.fields {
+
+        for (key, value) in log.fields.drain() {
             map.insert(key, value);
         }
         self.data.push(JsonValue::Object(map));

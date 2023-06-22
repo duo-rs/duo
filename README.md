@@ -47,7 +47,7 @@ gRPC server listening on http://127.0.0.1:6000
 Web server listening on http://127.0.0.1:3000
 ```
 
-Open https://127.0.0.1:3000 at your local browser to wait application report data.
+Open http://127.0.0.1:3000 at your local browser to wait application report data.
 
 ### Application
 
