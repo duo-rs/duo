@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use clap::StructOpt;
+use clap::{Parser, Subcommand};
 use duo_subscriber::DuoLayer;
 use parking_lot::RwLock;
 use tracing::Level;
@@ -40,25 +40,25 @@ static DUO_BANNER: &str = r"
                                   
 ";
 
-#[derive(Debug, clap::Parser)]
-#[clap(name = "duo")]
-#[clap(about = "Observability duo: Logging and Tracing.", long_about = None)]
+#[derive(Debug, Parser)]
+#[command(name = "duo")]
+#[command(author, version, about)]
 struct Cli {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     command: Commands,
 }
 
-#[derive(Debug, clap::Subcommand)]
+#[derive(Debug, Subcommand)]
 enum Commands {
     /// Start the duo server.
     Start {
         /// The web server listening port.
-        #[clap(short, default_value_t = 3000)]
+        #[arg(short, default_value_t = 3000)]
         web_port: u16,
         /// The gRPC server listening port.
-        #[clap(short, default_value_t = 6000)]
+        #[arg(short, default_value_t = 6000)]
         grpc_port: u16,
-        #[clap(short, default_value_t = false)]
+        #[arg(short, long)]
         collect_self: bool,
     },
 }
@@ -76,7 +76,7 @@ async fn main() -> Result<()> {
         } => {
             spawn_grpc_server(Arc::clone(&warehouse), grpc_port);
 
-            let duo_layer = if dbg!(collect_self) {
+            let duo_layer = if collect_self {
                 let layer = DuoLayer::new(
                     "duo",
                     format!("grpc://127.0.0.1:{}", grpc_port).parse().unwrap(),
