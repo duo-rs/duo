@@ -58,6 +58,8 @@ enum Commands {
         /// The gRPC server listening port.
         #[clap(short, default_value_t = 6000)]
         grpc_port: u16,
+        #[clap(short, default_value_t = false)]
+        collect_self: bool,
     },
 }
 
@@ -70,20 +72,27 @@ async fn main() -> Result<()> {
         Commands::Start {
             web_port,
             grpc_port,
+            collect_self,
         } => {
             spawn_grpc_server(Arc::clone(&warehouse), grpc_port);
 
-            let duo_layer = DuoLayer::new(
-                "duo",
-                format!("grpc://127.0.0.1:{}", grpc_port).parse().unwrap(),
-            )
-            .await;
-            tracing_subscriber::registry()
-                .with(fmt::layer())
-                .with(duo_layer.with_filter(filter::filter_fn(|metadata| {
+            let duo_layer = if dbg!(collect_self) {
+                let layer = DuoLayer::new(
+                    "duo",
+                    format!("grpc://127.0.0.1:{}", grpc_port).parse().unwrap(),
+                )
+                .await
+                .with_filter(filter::filter_fn(|metadata| {
                     // Ignore "duo_internal" event to avoid recursively report event to duo-server
                     metadata.target() != "duo_internal"
-                })))
+                }));
+                Some(layer)
+            } else {
+                None
+            };
+            tracing_subscriber::registry()
+                .with(fmt::layer())
+                .with(duo_layer)
                 .with(Targets::new().with_target("duo", Level::DEBUG))
                 .init();
 
