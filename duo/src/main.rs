@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -39,6 +42,7 @@ static DUO_BANNER: &str = r"
 ██████   ██████   ██████  
                                   
 ";
+static MEMORY_MODE: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug, Parser)]
 #[command(name = "duo")]
@@ -59,6 +63,11 @@ enum Commands {
         #[arg(short, default_value_t = 6000)]
         grpc_port: u16,
         #[arg(short, long)]
+        /// Enable the memory mode, which never persist collected data.
+        /// This mode suit for local development.
+        memory_mode: bool,
+        /// Collect log and span of duo itself.
+        #[arg(short, long)]
         collect_self: bool,
     },
 }
@@ -72,8 +81,10 @@ async fn main() -> Result<()> {
         Commands::Start {
             web_port,
             grpc_port,
+            memory_mode,
             collect_self,
         } => {
+            MEMORY_MODE.store(memory_mode, Ordering::Relaxed);
             spawn_grpc_server(Arc::clone(&warehouse), grpc_port);
 
             let duo_layer = if collect_self {
@@ -100,4 +111,8 @@ async fn main() -> Result<()> {
         }
     }
     Ok(())
+}
+
+pub fn is_memory_mode() -> bool {
+    MEMORY_MODE.load(Ordering::Relaxed)
 }

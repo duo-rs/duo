@@ -86,7 +86,7 @@ Run your application then check the http://127.0.0.1:3000 to see the tracing dat
 
 - [ ] Support logging diagnosing.
 
-- [ ] Support data persistence. See [#1](https://github.com/duo-rs/duo/issues/1).
+- [ ] Support arrow-ipc WAL.
 
 - [ ] Support OpenTelemetry specification, aimed to be a lightweight OpenTelemetry backend.
 
