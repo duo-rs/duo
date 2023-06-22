@@ -53,7 +53,7 @@ impl<'a> TraceQuery<'a> {
                 continue;
             }
             if let Some(span_name) = p.operation.as_ref() {
-                if &*span.name != span_name {
+                if &span.name != span_name {
                     continue;
                 }
             }
@@ -102,7 +102,7 @@ impl<'a> TraceQuery<'a> {
                 col("trace_id").in_list(trace_ids.into_iter().map(|id| lit(*id)).collect(), false),
             )
             .await
-            .unwrap()
+            .unwrap_or_default()
             .into_iter();
         debug!("span logs from parquet: {}", logs.len());
         trace_logs.extend(logs);
@@ -156,7 +156,7 @@ impl<'a> TraceQuery<'a> {
             let logs = pq
                 .query_log(col("trace_id").eq(lit(trace_id)))
                 .await
-                .unwrap();
+                .unwrap_or_default();
             debug!("trace `{trace_id}` logs from parquet: {}", logs.len());
             trace_logs.extend(logs);
             Some(TraceExt {

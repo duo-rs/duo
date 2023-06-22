@@ -75,7 +75,7 @@ async fn main() -> Result<()> {
 
             let duo_layer = DuoLayer::new(
                 "duo",
-                format!("http://127.0.0.1:{}", grpc_port).parse().unwrap(),
+                format!("grpc://127.0.0.1:{}", grpc_port).parse().unwrap(),
             )
             .await;
             tracing_subscriber::registry()
