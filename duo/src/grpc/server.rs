@@ -37,6 +37,11 @@ impl DuoServer {
             }
         });
 
+        if crate::is_memory_mode() {
+            // Never persist data in memory mode.
+            return;
+        }
+
         let warehouse = Arc::clone(&self.warehouse);
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(10));

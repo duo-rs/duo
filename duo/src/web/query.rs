@@ -23,23 +23,32 @@ impl<'a> TraceQuery<'a> {
         let limit = p.limit.unwrap_or(DEFAUT_TRACE_LIMIT);
         // <trace_id, spans>
         let mut traces = HashMap::<u64, Vec<Cow<Span>>>::new();
-        let pq = PartitionQuery::new(
-            ".".into(),
-            p.start
-                .unwrap_or_else(|| OffsetDateTime::now_utc() - Duration::minutes(15)),
-            p.end.unwrap_or(OffsetDateTime::now_utc()),
-        );
-        let expr = col("process_id").like(lit(format!("{process_prefix}%")));
-        let spans = pq
-            .query_span(expr)
-            .await
-            .unwrap()
-            .into_iter()
-            .map(Cow::Owned);
-        debug!("spans from parquet: {}", spans.len());
-
         let mut total_spans = self.0.spans().iter().map(Cow::Borrowed).collect::<Vec<_>>();
-        total_spans.extend(spans);
+
+        let memory_mode = crate::is_memory_mode();
+        // Don't query data from storage in memory mode
+        let pq = if memory_mode {
+            None
+        } else {
+            Some(PartitionQuery::new(
+                ".".into(),
+                p.start
+                    .unwrap_or_else(|| OffsetDateTime::now_utc() - Duration::minutes(15)),
+                p.end.unwrap_or(OffsetDateTime::now_utc()),
+            ))
+        };
+        if let Some(pq) = pq.as_ref() {
+            let expr = col("process_id").like(lit(format!("{process_prefix}%")));
+            let spans = pq
+                .query_span(expr)
+                .await
+                .unwrap()
+                .into_iter()
+                .map(Cow::Owned);
+            debug!("spans from parquet: {}", spans.len());
+            total_spans.extend(spans);
+        }
+
         for span in total_spans {
             if traces.contains_key(&span.trace_id) {
                 traces
@@ -97,15 +106,19 @@ impl<'a> TraceQuery<'a> {
             })
             .cloned()
             .collect::<Vec<_>>();
-        let logs = pq
-            .query_log(
-                col("trace_id").in_list(trace_ids.into_iter().map(|id| lit(*id)).collect(), false),
-            )
-            .await
-            .unwrap_or_default()
-            .into_iter();
-        debug!("span logs from parquet: {}", logs.len());
-        trace_logs.extend(logs);
+
+        if let Some(pq) = pq.as_ref() {
+            let logs = pq
+                .query_log(
+                    col("trace_id")
+                        .in_list(trace_ids.into_iter().map(|id| lit(*id)).collect(), false),
+                )
+                .await
+                .unwrap_or_default()
+                .into_iter();
+            debug!("span logs from parquet: {}", logs.len());
+            trace_logs.extend(logs);
+        }
         traces
             .into_iter()
             .take(limit)
@@ -125,7 +138,13 @@ impl<'a> TraceQuery<'a> {
     }
 
     pub(super) async fn get_trace_by_id(&self, trace_id: u64) -> Option<TraceExt> {
-        let pq = PartitionQuery::recent_hours(".".into(), 12);
+        // Don't query data from storage in memory mode
+        let pq = if crate::is_memory_mode() {
+            None
+        } else {
+            Some(PartitionQuery::recent_hours(".".into(), 12))
+        };
+
         let mut trace_spans = self
             .0
             .spans()
@@ -133,7 +152,7 @@ impl<'a> TraceQuery<'a> {
             .filter(|span| span.trace_id == trace_id)
             .map(Cow::Borrowed)
             .collect::<Vec<_>>();
-        if trace_spans.is_empty() {
+        if let Some(pq) = pq.as_ref() {
             let spans = pq
                 .query_span(col("trace_id").eq(lit(trace_id)))
                 .await
@@ -153,12 +172,15 @@ impl<'a> TraceQuery<'a> {
                 .filter(|log| log.trace_id == Some(trace_id))
                 .cloned()
                 .collect::<Vec<_>>();
-            let logs = pq
-                .query_log(col("trace_id").eq(lit(trace_id)))
-                .await
-                .unwrap_or_default();
-            debug!("trace `{trace_id}` logs from parquet: {}", logs.len());
-            trace_logs.extend(logs);
+
+            if let Some(pq) = pq.as_ref() {
+                let logs = pq
+                    .query_log(col("trace_id").eq(lit(trace_id)))
+                    .await
+                    .unwrap_or_default();
+                debug!("trace `{trace_id}` logs from parquet: {}", logs.len());
+                trace_logs.extend(logs);
+            }
             Some(TraceExt {
                 trace_id,
                 spans: trace_spans
