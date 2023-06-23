@@ -21,7 +21,7 @@ pub struct Span {
     pub parent_id: Option<u64>,
     pub process_id: String,
     pub name: String,
-    #[serde(deserialize_with = "deser::miscrosecond")]
+    #[serde(deserialize_with = "deser::miscrosecond::deserialize")]
     pub start: OffsetDateTime,
     #[serde(default, deserialize_with = "deser::option_miscrosecond")]
     pub end: Option<OffsetDateTime>,
@@ -31,7 +31,7 @@ pub struct Span {
     pub logs: Vec<Log>,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Log {
     pub process_id: String,
     /// The span's id the log belong to.
@@ -41,7 +41,7 @@ pub struct Log {
     // TODO: change level to i32
     #[serde(with = "deser::level")]
     pub level: Level,
-    #[serde(deserialize_with = "deser::miscrosecond")]
+    #[serde(with = "deser::miscrosecond")]
     pub time: OffsetDateTime,
     #[serde(flatten)]
     pub fields: HashMap<String, JsonValue>,
