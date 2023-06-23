@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::{mem, sync::Arc, time::Duration};
 
 use duo_api::instrument::{
     instrument_server::Instrument, RecordEventRequest, RecordEventResponse, RecordSpanRequest,
@@ -8,7 +8,7 @@ use parking_lot::RwLock;
 use tonic::{Request, Response, Status};
 use tracing::{debug, info};
 
-use crate::{Aggregator, Warehouse};
+use crate::{partition::PartitionWriter, Aggregator, Warehouse};
 
 pub struct DuoServer {
     warehouse: Arc<RwLock<Warehouse>>,
@@ -43,14 +43,18 @@ impl DuoServer {
 
         let warehouse = Arc::clone(&self.warehouse);
         tokio::spawn(async move {
+            // TODO: replace interval with job scheduler
             let mut interval = tokio::time::interval(Duration::from_secs(10));
             loop {
                 interval.tick().await;
-                let mut warehouse = warehouse.write();
-                warehouse
-                    .write_parquet()
-                    .await
-                    .expect("Write parquet failed");
+                let (logs, spans) = {
+                    let mut guard = warehouse.write();
+                    (mem::take(&mut guard.logs), mem::take(&mut guard.spans))
+                };
+                let mut pw = PartitionWriter::with_minute();
+                pw.write_logs(logs).unwrap();
+                pw.write_spans(spans).unwrap();
+                pw.flush().await.expect("Write parquet failed");
             }
         });
     }

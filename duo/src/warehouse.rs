@@ -3,16 +3,10 @@ use std::{
     fmt::Debug,
     fs::File,
     io::Write,
-    mem,
     path::Path,
 };
 
-use crate::{
-    aggregator::AggregatedData,
-    arrow::{LogRecordBatchBuilder, SpanRecordBatchBuilder},
-    partition::PartitionWriter,
-    Log, Process, Span,
-};
+use crate::{aggregator::AggregatedData, Log, Process, Span};
 use anyhow::Result;
 use duo_api as proto;
 
@@ -132,29 +126,6 @@ impl Warehouse {
         file.write_all(
             serde_json::to_string(&self.processes().values().collect::<Vec<_>>())?.as_bytes(),
         )?;
-        Ok(())
-    }
-
-    pub(crate) async fn write_parquet(&mut self) -> Result<()> {
-        let pw = PartitionWriter::with_minute();
-
-        if !self.spans.is_empty() {
-            let mut span_record_batch_builder = SpanRecordBatchBuilder::default();
-            for span in mem::take(&mut self.spans) {
-                span_record_batch_builder.append_span(span);
-            }
-            pw.write_partition("span", span_record_batch_builder.into_record_batch()?)
-                .await?;
-        }
-
-        if !self.logs.is_empty() {
-            let mut log_record_batch_builder = LogRecordBatchBuilder::default();
-            for log in mem::take(&mut self.logs) {
-                log_record_batch_builder.append_log(log);
-            }
-            pw.write_partition("log", log_record_batch_builder.into_record_batch()?)
-                .await?;
-        }
         Ok(())
     }
 }
