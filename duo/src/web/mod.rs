@@ -14,9 +14,10 @@ use tower_http::services::ServeDir;
 use crate::Warehouse;
 
 pub mod deser;
+mod logs;
 mod query;
-mod routes;
 pub mod serialize;
+mod trace;
 
 // Frontend HTML page.
 static ROOT_PAGE: Html<&'static str> = Html(include_str!("../../ui/index.html"));
@@ -39,11 +40,12 @@ pub async fn run_web_server(warehouse: Arc<RwLock<Warehouse>>, port: u16) -> any
                 )
             }),
         )
-        .route("/api/traces", get(routes::traces))
-        .route("/api/traces/:id", get(routes::trace))
-        .route("/api/services", get(routes::services))
-        .route("/api/services/:service/operations", get(routes::operations))
-        .route("/stats", get(routes::stats))
+        .route("/api/traces", get(trace::list))
+        .route("/api/traces/:id", get(trace::get_by_id))
+        .route("/api/services", get(trace::services))
+        .route("/api/services/:service/operations", get(trace::operations))
+        .route("/api/logs", get(logs::list))
+        .route("/stats", get(self::stats))
         .fallback(fallback)
         .layer(layer);
 
@@ -65,4 +67,15 @@ async fn fallback(uri: Uri) -> impl IntoResponse {
         // to avoid frontend route 404.
         (StatusCode::TEMPORARY_REDIRECT, ROOT_PAGE).into_response()
     }
+}
+
+#[tracing::instrument]
+async fn stats(Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>) -> impl IntoResponse {
+    let warehouse = warehouse.read();
+    serde_json::json!({
+            "process": warehouse.processes(),
+            "logs": warehouse.logs.len(),
+            "spans": warehouse.spans.len(),
+    })
+    .to_string()
 }

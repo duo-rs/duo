@@ -19,13 +19,6 @@ where
     d.deserialize_option(OptionMicroSecondsTimestampVisitor)
 }
 
-pub fn miscrosecond<'de, D>(d: D) -> Result<OffsetDateTime, D::Error>
-where
-    D: de::Deserializer<'de>,
-{
-    d.deserialize_any(MicroSecondsTimestampVisitor)
-}
-
 pub fn map_list<'de, D>(d: D) -> Result<HashMap<String, Value>, D::Error>
 where
     D: de::Deserializer<'de>,
@@ -38,6 +31,27 @@ where
     D: de::Deserializer<'de>,
 {
     d.deserialize_option(OptionDurationVisitor)
+}
+
+pub mod miscrosecond {
+    use serde::{Deserializer, Serializer};
+    use time::OffsetDateTime;
+
+    use super::MicroSecondsTimestampVisitor;
+
+    pub fn serialize<S>(time: &OffsetDateTime, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_i64((time.unix_timestamp_nanos() / 1000) as i64)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<OffsetDateTime, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(MicroSecondsTimestampVisitor)
+    }
 }
 
 pub mod level {

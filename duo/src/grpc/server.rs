@@ -1,11 +1,10 @@
 use std::{sync::Arc, time::Duration};
 
-use duo_api as proto;
-use parking_lot::RwLock;
-use proto::instrument::{
+use duo_api::instrument::{
     instrument_server::Instrument, RecordEventRequest, RecordEventResponse, RecordSpanRequest,
     RecordSpanResponse, RegisterProcessRequest, RegisterProcessResponse,
 };
+use parking_lot::RwLock;
 use tonic::{Request, Response, Status};
 use tracing::{debug, info};
 

@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use time::{Duration, OffsetDateTime};
 use tracing::debug;
 
-use super::routes::QueryParameters;
+use super::trace::QueryParameters;
 
 const DEFAUT_TRACE_LIMIT: usize = 20;
 
@@ -25,9 +25,8 @@ impl<'a> TraceQuery<'a> {
         let mut traces = HashMap::<u64, Vec<Cow<Span>>>::new();
         let mut total_spans = self.0.spans().iter().map(Cow::Borrowed).collect::<Vec<_>>();
 
-        let memory_mode = crate::is_memory_mode();
         // Don't query data from storage in memory mode
-        let pq = if memory_mode {
+        let pq = if crate::is_memory_mode() {
             None
         } else {
             Some(PartitionQuery::new(
@@ -42,7 +41,7 @@ impl<'a> TraceQuery<'a> {
             let spans = pq
                 .query_span(expr)
                 .await
-                .unwrap()
+                .unwrap_or_default()
                 .into_iter()
                 .map(Cow::Owned);
             debug!("spans from parquet: {}", spans.len());
@@ -156,7 +155,7 @@ impl<'a> TraceQuery<'a> {
             let spans = pq
                 .query_span(col("trace_id").eq(lit(trace_id)))
                 .await
-                .unwrap()
+                .unwrap_or_default()
                 .into_iter()
                 .map(Cow::Owned);
             trace_spans.extend(spans);

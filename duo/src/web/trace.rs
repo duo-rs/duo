@@ -33,7 +33,7 @@ pub(super) struct QueryParameters {
 }
 
 #[tracing::instrument]
-pub(super) async fn traces(
+pub(super) async fn list(
     Query(parameters): Query<QueryParameters>,
     Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
 ) -> impl IntoResponse {
@@ -61,7 +61,7 @@ pub(super) async fn operations(
 }
 
 #[tracing::instrument]
-pub(super) async fn trace(
+pub(super) async fn get_by_id(
     Path(id): Path<String>,
     Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
 ) -> impl IntoResponse {
@@ -78,17 +78,4 @@ pub(super) async fn trace(
         }
         None => (StatusCode::NOT_FOUND, format!("trace {} not found", id)).into_response(),
     }
-}
-
-#[tracing::instrument]
-pub(super) async fn stats(
-    Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
-) -> impl IntoResponse {
-    let warehouse = warehouse.read();
-    serde_json::json!({
-            "process": warehouse.processes(),
-            "logs": warehouse.logs.len(),
-            "spans": warehouse.spans.len(),
-    })
-    .to_string()
 }
