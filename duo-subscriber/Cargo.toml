@@ -1,17 +1,17 @@
 [package]
 name = "duo-subscriber"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
 
 [dependencies]
-duo-api = { version = "0.1", path = "../duo-api" }
-rand = "0.8"
+duo-api.workspace = true
+rand.workspace = true
 tokio = { version = "1", features = ["time", "sync"] }
-tonic = "0.9"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", default-features = false, features = [
-    "registry",
-] }
+tonic.workspace = true
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["registry"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread"] }
