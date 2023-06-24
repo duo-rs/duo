@@ -1,27 +1,15 @@
 use duo_api as proto;
 
-use std::mem;
-
-use crate::{Log, Span};
+use crate::Span;
 
 #[derive(Debug, Default)]
-pub struct Aggregator {
-    // <span_id, Span>
+pub struct SpanAggregator {
     spans: Vec<proto::Span>,
-    logs: Vec<proto::Log>,
 }
 
-pub struct AggregatedData {
-    pub spans: Vec<Span>,
-    pub logs: Vec<Log>,
-}
-
-impl Aggregator {
+impl SpanAggregator {
     pub fn new() -> Self {
-        Aggregator {
-            spans: Vec::new(),
-            logs: Vec::new(),
-        }
+        SpanAggregator { spans: Vec::new() }
     }
 
     pub fn record_span(&mut self, raw: proto::Span) {
@@ -39,14 +27,8 @@ impl Aggregator {
         }
     }
 
-    #[inline]
-    pub fn record_log(&mut self, log: proto::Log) {
-        self.logs.push(log);
-    }
-
-    /// Aggregate recorded data into [`AggregatedData`].
-    pub fn aggregate(&mut self) -> AggregatedData {
-        // Remove all spans of intact spans.
+    pub fn aggregate(&mut self) -> Vec<Span> {
+        // Remove all intact spans.
         let mut spans = Vec::new();
         self.spans.retain(|span| {
             if span.end.is_some() {
@@ -56,10 +38,6 @@ impl Aggregator {
                 true
             }
         });
-        let logs = mem::take(&mut self.logs);
-        AggregatedData {
-            spans,
-            logs: logs.into_iter().map(Log::from).collect(),
-        }
+        spans
     }
 }

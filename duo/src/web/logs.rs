@@ -9,7 +9,7 @@ use serde::Deserialize;
 use time::{Duration, OffsetDateTime};
 
 use crate::query::PartitionQuery;
-use crate::Warehouse;
+use crate::MemoryStore;
 
 use super::deser;
 
@@ -29,13 +29,13 @@ pub(super) struct QueryParameters {
 #[tracing::instrument]
 pub(super) async fn list(
     Query(p): Query<QueryParameters>,
-    Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
+    Extension(memory_store): Extension<Arc<RwLock<MemoryStore>>>,
 ) -> impl IntoResponse {
     let process_prefix = p.service;
     let limit = p.limit.unwrap_or(DEFAUT_LOG_LIMIT);
     let mut total_logs = {
-        let warehouse = warehouse.read();
-        warehouse
+        let memory_store = memory_store.read();
+        memory_store
             .logs
             .iter()
             .filter(|log| log.process_id.starts_with(&process_prefix))

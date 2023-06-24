@@ -1,5 +1,5 @@
 use crate::query::PartitionQuery;
-use crate::{Span, TraceExt, Warehouse};
+use crate::{Span, TraceExt, MemoryStore};
 use datafusion::prelude::*;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -10,11 +10,11 @@ use super::trace::QueryParameters;
 
 const DEFAUT_TRACE_LIMIT: usize = 20;
 
-pub(super) struct TraceQuery<'a>(&'a Warehouse);
+pub(super) struct TraceQuery<'a>(&'a MemoryStore);
 
 impl<'a> TraceQuery<'a> {
-    pub(super) fn new(warehouse: &'a Warehouse) -> Self {
-        TraceQuery(warehouse)
+    pub(super) fn new(memory_store: &'a MemoryStore) -> Self {
+        TraceQuery(memory_store)
     }
 
     pub(super) async fn filter_traces(&self, p: QueryParameters) -> Vec<TraceExt> {

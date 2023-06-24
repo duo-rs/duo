@@ -8,31 +8,34 @@ use parking_lot::RwLock;
 use tonic::{Request, Response, Status};
 use tracing::{debug, info};
 
-use crate::{partition::PartitionWriter, Aggregator, Warehouse};
+use crate::{partition::PartitionWriter, MemoryStore, SpanAggregator};
 
 pub struct DuoServer {
-    warehouse: Arc<RwLock<Warehouse>>,
-    aggregator: Arc<RwLock<Aggregator>>,
+    memory_store: Arc<RwLock<MemoryStore>>,
+    aggregator: Arc<RwLock<SpanAggregator>>,
 }
 
 impl DuoServer {
-    pub fn new(warehouse: Arc<RwLock<Warehouse>>) -> Self {
+    pub fn new(memory_store: Arc<RwLock<MemoryStore>>) -> Self {
         Self {
-            warehouse,
-            aggregator: Arc::new(RwLock::new(Aggregator::new())),
+            memory_store,
+            aggregator: Arc::new(RwLock::new(SpanAggregator::new())),
         }
     }
 
     pub fn run(&mut self) {
         let aggregator = Arc::clone(&self.aggregator);
-        let warehouse = Arc::clone(&self.warehouse);
+        let memory_store = Arc::clone(&self.memory_store);
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(1));
             loop {
                 interval.tick().await;
-                let data = aggregator.write().aggregate();
-                let mut warehouse = warehouse.write();
-                warehouse.merge_data(data);
+                let spans = aggregator.write().aggregate();
+                if spans.is_empty() {
+                    continue;
+                }
+                let mut memory_store = memory_store.write();
+                memory_store.merge_spans(spans);
             }
         });
 
@@ -41,14 +44,14 @@ impl DuoServer {
             return;
         }
 
-        let warehouse = Arc::clone(&self.warehouse);
+        let memory_store = Arc::clone(&self.memory_store);
         tokio::spawn(async move {
             // TODO: replace interval with job scheduler
             let mut interval = tokio::time::interval(Duration::from_secs(10));
             loop {
                 interval.tick().await;
                 let (logs, spans) = {
-                    let mut guard = warehouse.write();
+                    let mut guard = memory_store.write();
                     (mem::take(&mut guard.logs), mem::take(&mut guard.spans))
                 };
                 let mut pw = PartitionWriter::with_minute();
@@ -72,7 +75,7 @@ impl Instrument for DuoServer {
             .ok_or_else(|| tonic::Status::invalid_argument("missing process"))?;
         info!("register process: {}", process.name);
         let process_id = self
-            .warehouse
+            .memory_store
             .write()
             .register_process(process)
             .expect("Register process failed.");
@@ -102,7 +105,8 @@ impl Instrument for DuoServer {
             .into_inner()
             .log
             .ok_or_else(|| tonic::Status::invalid_argument("missing event"))?;
-        self.aggregator.write().record_log(log);
+        let mut guard = self.memory_store.write();
+        guard.record_log(log);
         Ok(Response::new(RecordEventResponse {}))
     }
 }

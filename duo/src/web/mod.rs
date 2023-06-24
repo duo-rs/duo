@@ -11,7 +11,7 @@ use parking_lot::RwLock;
 use tower::ServiceBuilder;
 use tower_http::services::ServeDir;
 
-use crate::Warehouse;
+use crate::MemoryStore;
 
 pub mod deser;
 mod logs;
@@ -23,9 +23,9 @@ mod trace;
 static ROOT_PAGE: Html<&'static str> = Html(include_str!("../../ui/index.html"));
 pub struct JaegerData<I: IntoIterator>(pub I);
 
-pub async fn run_web_server(warehouse: Arc<RwLock<Warehouse>>, port: u16) -> anyhow::Result<()> {
+pub async fn run_web_server(memory_store: Arc<RwLock<MemoryStore>>, port: u16) -> anyhow::Result<()> {
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    let layer = ServiceBuilder::new().layer(Extension(warehouse));
+    let layer = ServiceBuilder::new().layer(Extension(memory_store));
 
     let tmp_duo_dir = env::temp_dir().join("__duo_ui");
     include_dir::include_dir!("$CARGO_MANIFEST_DIR/ui/static").extract(&tmp_duo_dir)?;
@@ -70,12 +70,12 @@ async fn fallback(uri: Uri) -> impl IntoResponse {
 }
 
 #[tracing::instrument]
-async fn stats(Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>) -> impl IntoResponse {
-    let warehouse = warehouse.read();
+async fn stats(Extension(memory_store): Extension<Arc<RwLock<MemoryStore>>>) -> impl IntoResponse {
+    let memory_store = memory_store.read();
     serde_json::json!({
-            "process": warehouse.processes(),
-            "logs": warehouse.logs.len(),
-            "spans": warehouse.spans.len(),
+            "process": memory_store.processes(),
+            "logs": memory_store.logs.len(),
+            "spans": memory_store.spans.len(),
     })
     .to_string()
 }

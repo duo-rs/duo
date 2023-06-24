@@ -1,6 +1,6 @@
 use std::{net::SocketAddr, sync::Arc};
 
-use crate::Warehouse;
+use crate::MemoryStore;
 
 use self::server::DuoServer;
 
@@ -11,10 +11,10 @@ use tonic::transport::Server;
 
 mod server;
 
-pub fn spawn_server(warehouse: Arc<RwLock<Warehouse>>, port: u16) {
+pub fn spawn_server(memory_store: Arc<RwLock<MemoryStore>>, port: u16) {
     tokio::spawn(async move {
         let addr = SocketAddr::from(([0, 0, 0, 0], port));
-        let mut service = DuoServer::new(warehouse);
+        let mut service = DuoServer::new(memory_store);
         service.run();
 
         println!("gRPC server listening on grpc://{}", addr);

@@ -8,7 +8,7 @@ use parking_lot::RwLock;
 use serde::Deserialize;
 use time::{Duration, OffsetDateTime};
 
-use crate::{TraceExt, Warehouse};
+use crate::{MemoryStore, TraceExt};
 
 use super::deser;
 use super::query::TraceQuery;
@@ -35,42 +35,47 @@ pub(super) struct QueryParameters {
 #[tracing::instrument]
 pub(super) async fn list(
     Query(parameters): Query<QueryParameters>,
-    Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
+    Extension(memory_store): Extension<Arc<RwLock<MemoryStore>>>,
 ) -> impl IntoResponse {
-    let warehouse = warehouse.read();
+    let memory_store = memory_store.read();
     Json(JaegerData(
-        TraceQuery::new(&warehouse).filter_traces(parameters).await,
+        TraceQuery::new(&memory_store)
+            .filter_traces(parameters)
+            .await,
     ))
 }
 
 #[tracing::instrument]
 pub(super) async fn services(
-    Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
+    Extension(memory_store): Extension<Arc<RwLock<MemoryStore>>>,
 ) -> impl IntoResponse {
-    let warehouse = warehouse.read();
-    Json(JaegerData(warehouse.service_names()))
+    let memory_store = memory_store.read();
+    Json(JaegerData(memory_store.service_names()))
 }
 
 #[tracing::instrument]
 pub(super) async fn operations(
     Path(service): Path<String>,
-    Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
+    Extension(memory_store): Extension<Arc<RwLock<MemoryStore>>>,
 ) -> impl IntoResponse {
-    let warehouse = warehouse.read();
-    Json(JaegerData(warehouse.span_names(&service)))
+    let memory_store = memory_store.read();
+    Json(JaegerData(memory_store.span_names(&service)))
 }
 
 #[tracing::instrument]
 pub(super) async fn get_by_id(
     Path(id): Path<String>,
-    Extension(warehouse): Extension<Arc<RwLock<Warehouse>>>,
+    Extension(memory_store): Extension<Arc<RwLock<MemoryStore>>>,
 ) -> impl IntoResponse {
-    let warehouse = warehouse.read();
+    let memory_store = memory_store.read();
     let trace_id = id.parse::<u64>().ok();
 
     match trace_id {
         Some(trace_id) => {
-            if let Some(trace) = TraceQuery::new(&warehouse).get_trace_by_id(trace_id).await {
+            if let Some(trace) = TraceQuery::new(&memory_store)
+                .get_trace_by_id(trace_id)
+                .await
+            {
                 Json(JaegerData(vec![trace])).into_response()
             } else {
                 Json(JaegerData(Vec::<TraceExt>::new())).into_response()

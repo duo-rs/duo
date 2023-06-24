@@ -23,13 +23,13 @@ mod models;
 mod partition;
 mod query;
 mod utils;
-mod warehouse;
+mod memory;
 mod web;
 
-pub use aggregator::Aggregator;
+pub use aggregator::SpanAggregator;
 pub use grpc::spawn_server as spawn_grpc_server;
 pub use models::{Log, Process, Span, TraceExt};
-pub use warehouse::Warehouse;
+pub use memory::MemoryStore;
 pub use web::run_web_server;
 
 // ASCII Art generated from https://patorjk.com/software/taag/#p=display&h=0&v=0&f=ANSI%20Regular&t=Duo
@@ -75,7 +75,7 @@ enum Commands {
 #[tokio::main]
 async fn main() -> Result<()> {
     println!("{}", DUO_BANNER);
-    let warehouse = Arc::new(RwLock::new(Warehouse::load(".")?));
+    let memory_store = Arc::new(RwLock::new(MemoryStore::load(".")?));
 
     match Cli::parse().command {
         Commands::Start {
@@ -85,7 +85,7 @@ async fn main() -> Result<()> {
             collect_self,
         } => {
             MEMORY_MODE.store(memory_mode, Ordering::Relaxed);
-            spawn_grpc_server(Arc::clone(&warehouse), grpc_port);
+            spawn_grpc_server(Arc::clone(&memory_store), grpc_port);
 
             let duo_layer = if collect_self {
                 let layer = DuoLayer::new(
@@ -107,7 +107,7 @@ async fn main() -> Result<()> {
                 .with(Targets::new().with_target("duo", Level::DEBUG))
                 .init();
 
-            run_web_server(warehouse, web_port).await?;
+            run_web_server(memory_store, web_port).await?;
         }
     }
     Ok(())

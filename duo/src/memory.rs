@@ -6,21 +6,21 @@ use std::{
     path::Path,
 };
 
-use crate::{aggregator::AggregatedData, Log, Process, Span};
+use crate::{Log, Process, Span};
 use anyhow::Result;
 use duo_api as proto;
 
 #[derive(Default)]
-pub struct Warehouse {
+pub struct MemoryStore {
     // Collection of services.
     services: HashMap<String, Vec<Process>>,
     pub spans: Vec<Span>,
     pub logs: Vec<Log>,
 }
 
-impl Debug for Warehouse {
+impl Debug for MemoryStore {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Warehouse")
+        f.debug_struct("MemoryStore")
             .field("service count", &self.services.len())
             .field("span count", &self.spans.len())
             .field("log count", &self.logs.len())
@@ -28,9 +28,9 @@ impl Debug for Warehouse {
     }
 }
 
-impl Warehouse {
+impl MemoryStore {
     pub fn new() -> Self {
-        Warehouse::default()
+        MemoryStore::default()
     }
 
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
@@ -54,7 +54,7 @@ impl Warehouse {
                 .push(process);
         });
 
-        Ok(Warehouse {
+        Ok(MemoryStore {
             services,
             ..Default::default()
         })
@@ -113,12 +113,13 @@ impl Warehouse {
         Ok(process_id)
     }
 
+    pub(crate) fn record_log(&mut self, log: proto::Log) {
+        self.logs.push(Log::from(log));
+    }
+
     // Merge aggregated data.
-    pub(crate) fn merge_data(&mut self, data: AggregatedData) {
-        self.spans.extend(data.spans);
-        // Reserve capacity advanced.
-        self.logs.reserve(data.logs.len());
-        self.logs.extend(data.logs);
+    pub(crate) fn merge_spans(&mut self, spans: Vec<Span>) {
+        self.spans.extend(spans);
     }
 
     fn write_process<P: AsRef<Path>>(&self, path: P) -> Result<()> {
