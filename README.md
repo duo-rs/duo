@@ -10,7 +10,7 @@
 
 ## What is duo?
 
-Duo is an easy-to-use observability solution that provides both logging and tracing capabilities for Rust applications. While traditional observability solutions are powerful (such as [ELK](https://elastic.co), [jaegertracing](https://jaegertracing.io), etc), it is also complex to deploy and maintain. Duo aimed to provide a less-powerful but complete set of observability features, with extremely simple deployment and maintenance. 
+Duo is an easy-to-use observability solution that provides both logging and tracing capabilities for Rust applications. While traditional observability solutions are powerful (such as [ELK](https://elastic.co), [jaegertracing](https://jaegertracing.io), etc), it is also complex to deploy and maintain. Duo aimed to provide a less-powerful but complete set of observability features, with extremely simple deployment and maintenance.
 
 This project was inspired by [tracing](https://github.com/tokio-rs/tracing) and [console](https://github.com/tokio-rs/console), which mainly consist of multiple components:
 
@@ -37,10 +37,10 @@ I personally think the logging and tracing have equal importance to observabilit
 cargo install duo
 ```
 
-Run `duo start`.
+Run `duo`.
 
 ```
-$ duo start
+$ duo
 
 gRPC server listening on http://127.0.0.1:6000
 
@@ -72,6 +72,7 @@ async fn main() {
     handle.await.unwrap();
 }
 ```
+
 > For more example, please see [examples directory](./duo-subscriber/examples/).
 
 Run your application then check the http://127.0.0.1:3000 to see the tracing data.
