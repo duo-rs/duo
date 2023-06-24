@@ -23,7 +23,10 @@ mod trace;
 static ROOT_PAGE: Html<&'static str> = Html(include_str!("../../ui/index.html"));
 pub struct JaegerData<I: IntoIterator>(pub I);
 
-pub async fn run_web_server(memory_store: Arc<RwLock<MemoryStore>>, port: u16) -> anyhow::Result<()> {
+pub async fn run_web_server(
+    memory_store: Arc<RwLock<MemoryStore>>,
+    port: u16,
+) -> anyhow::Result<()> {
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let layer = ServiceBuilder::new().layer(Extension(memory_store));
 
@@ -74,8 +77,8 @@ async fn stats(Extension(memory_store): Extension<Arc<RwLock<MemoryStore>>>) -> 
     let memory_store = memory_store.read();
     serde_json::json!({
             "process": memory_store.processes(),
-            "logs": memory_store.logs.len(),
-            "spans": memory_store.spans.len(),
+            "logs": memory_store.logs().len(),
+            "spans": memory_store.spans().len(),
     })
     .to_string()
 }

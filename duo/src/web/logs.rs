@@ -36,7 +36,7 @@ pub(super) async fn list(
     let mut total_logs = {
         let memory_store = memory_store.read();
         memory_store
-            .logs
+            .logs()
             .iter()
             .filter(|log| log.process_id.starts_with(&process_prefix))
             .cloned()

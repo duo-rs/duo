@@ -1,4 +1,4 @@
-use std::{mem, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use duo_api::instrument::{
     instrument_server::Instrument, RecordEventRequest, RecordEventResponse, RecordSpanRequest,
@@ -52,7 +52,7 @@ impl DuoServer {
                 interval.tick().await;
                 let (logs, spans) = {
                     let mut guard = memory_store.write();
-                    (mem::take(&mut guard.logs), mem::take(&mut guard.spans))
+                    (guard.take_logs(), guard.take_spans())
                 };
                 let mut pw = PartitionWriter::with_minute();
                 pw.write_logs(logs).unwrap();

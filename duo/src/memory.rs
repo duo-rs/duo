@@ -3,6 +3,7 @@ use std::{
     fmt::Debug,
     fs::File,
     io::Write,
+    mem,
     path::Path,
 };
 
@@ -14,8 +15,8 @@ use duo_api as proto;
 pub struct MemoryStore {
     // Collection of services.
     services: HashMap<String, Vec<Process>>,
-    pub spans: Vec<Span>,
-    pub logs: Vec<Log>,
+    spans: Vec<Span>,
+    logs: Vec<Log>,
 }
 
 impl Debug for MemoryStore {
@@ -62,6 +63,10 @@ impl MemoryStore {
 
     pub(crate) fn spans(&self) -> &Vec<Span> {
         &self.spans
+    }
+
+    pub(crate) fn logs(&self) -> &Vec<Log> {
+        &self.logs
     }
 
     pub(super) fn processes(&self) -> HashMap<String, Process> {
@@ -120,6 +125,14 @@ impl MemoryStore {
     // Merge aggregated data.
     pub(crate) fn merge_spans(&mut self, spans: Vec<Span>) {
         self.spans.extend(spans);
+    }
+
+    pub fn take_spans(&mut self) -> Vec<Span> {
+        mem::take(&mut self.spans)
+    }
+
+    pub fn take_logs(&mut self) -> Vec<Log> {
+        mem::take(&mut self.logs)
     }
 
     fn write_process<P: AsRef<Path>>(&self, path: P) -> Result<()> {

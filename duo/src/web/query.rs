@@ -1,5 +1,5 @@
 use crate::query::PartitionQuery;
-use crate::{Span, TraceExt, MemoryStore};
+use crate::{MemoryStore, Span, TraceExt};
 use datafusion::prelude::*;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -94,7 +94,7 @@ impl<'a> TraceQuery<'a> {
         let trace_ids = traces.keys().collect::<Vec<_>>();
         let mut trace_logs = self
             .0
-            .logs
+            .logs()
             .iter()
             .filter(|log| {
                 if let Some(id) = log.trace_id {
@@ -166,7 +166,7 @@ impl<'a> TraceQuery<'a> {
         } else {
             let mut trace_logs = self
                 .0
-                .logs
+                .logs()
                 .iter()
                 .filter(|log| log.trace_id == Some(trace_id))
                 .cloned()
