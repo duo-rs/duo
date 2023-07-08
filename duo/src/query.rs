@@ -75,7 +75,7 @@ impl PartitionQuery {
         let df = self.ctx.read_table(self.get_table(table_name).await?)?;
         let batch = df.filter(expr)?.collect().await.unwrap();
         let json_values = record_batches_to_json_rows(&batch.iter().collect::<Vec<_>>())
-            .unwrap()
+            .unwrap_or_default()
             .into_iter()
             .map(|value| serde_json::from_value::<T>(Value::Object(value)).unwrap());
         Ok(json_values)
