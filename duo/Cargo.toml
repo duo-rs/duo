@@ -13,7 +13,6 @@ arrow-schema = "42"
 arrow-json = "42"
 axum = "0.6"
 rand.workspace = true
-include_dir = "0.7"
 clap = { version = "4", default-features = false, features = ["std", "derive"] }
 duo-api.workspace = true
 duo-subscriber.workspace = true
@@ -25,10 +24,11 @@ time = { version = "0.3", features = ["parsing"] }
 tokio = { version = "1", features = ["rt-multi-thread"] }
 tonic.workspace = true
 tower = "0.4"
-tower-http = { version = "0.4", features = ["fs"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
 datafusion = "27"
+rust-embed = "6"
+mime_guess = "2"
 
 [dev-dependencies]
 rstest = "0.16"

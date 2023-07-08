@@ -1,15 +1,16 @@
-use std::{env, net::SocketAddr, sync::Arc};
+use std::{net::SocketAddr, sync::Arc};
 
 use axum::{
+    body::{boxed, Full},
     extract::Extension,
-    http::{StatusCode, Uri},
-    response::{Html, IntoResponse},
-    routing::{get, get_service},
+    http::{header, StatusCode, Uri},
+    response::{Html, IntoResponse, Response},
+    routing::get,
     Router,
 };
 use parking_lot::RwLock;
+use rust_embed::RustEmbed;
 use tower::ServiceBuilder;
-use tower_http::services::ServeDir;
 
 use crate::MemoryStore;
 
@@ -23,6 +24,36 @@ mod trace;
 static ROOT_PAGE: Html<&'static str> = Html(include_str!("../../ui/index.html"));
 pub struct JaegerData<I: IntoIterator>(pub I);
 
+#[derive(RustEmbed)]
+#[folder = "ui/static"]
+struct UiAssets;
+
+pub struct StaticFile<T>(pub T);
+
+impl<T> IntoResponse for StaticFile<T>
+where
+    T: Into<String>,
+{
+    fn into_response(self) -> Response {
+        let path = self.0.into();
+
+        match UiAssets::get(path.as_str()) {
+            Some(content) => {
+                let body = boxed(Full::from(content.data));
+                let mime = mime_guess::from_path(path).first_or_octet_stream();
+                Response::builder()
+                    .header(header::CONTENT_TYPE, mime.as_ref())
+                    .body(body)
+                    .unwrap()
+            }
+            None => Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(boxed(Full::from("404")))
+                .unwrap(),
+        }
+    }
+}
+
 pub async fn run_web_server(
     memory_store: Arc<RwLock<MemoryStore>>,
     port: u16,
@@ -30,19 +61,9 @@ pub async fn run_web_server(
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let layer = ServiceBuilder::new().layer(Extension(memory_store));
 
-    let tmp_duo_dir = env::temp_dir().join("__duo_ui");
-    include_dir::include_dir!("$CARGO_MANIFEST_DIR/ui/static").extract(&tmp_duo_dir)?;
     let app = Router::new()
         .route("/", get(|| async { ROOT_PAGE }))
-        .nest_service(
-            "/static",
-            get_service(ServeDir::new(tmp_duo_dir)).handle_error(|error| async move {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Unhandled internal error: {}", error),
-                )
-            }),
-        )
+        .nest_service("/static", get(static_handler))
         .route("/api/traces", get(trace::list))
         .route("/api/traces/:id", get(trace::get_by_id))
         .route("/api/services", get(trace::services))
@@ -57,6 +78,10 @@ pub async fn run_web_server(
         .serve(app.into_make_service())
         .await?;
     Ok(())
+}
+
+async fn static_handler(uri: Uri) -> impl IntoResponse {
+    StaticFile(uri.path().trim_start_matches('/').to_string())
 }
 
 async fn fallback(uri: Uri) -> impl IntoResponse {
