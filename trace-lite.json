@@ -1,0 +1,248 @@
+{
+    "data": [
+        {
+            "traceID": "17906653982545417375",
+            "spans": [
+                {
+                    "traceID": "17906653982545417375",
+                    "references": [
+                        {
+                            "refType": "CHILD_OF",
+                            "traceID": "17906653982545417375",
+                            "spanID": "9105230036782898140"
+                        }
+                    ],
+                    "spanID": "12804454147765535038",
+                    "operationName": "baz",
+                    "startTime": 1685787838395645,
+                    "duration": 48,
+                    "tags": [
+                        {
+                            "key": "@busy",
+                            "type": "string",
+                            "value": "37us"
+                        },
+                        {
+                            "key": "@idle",
+                            "type": "string",
+                            "value": "1us"
+                        },
+                        {
+                            "key": "@line",
+                            "type": "string",
+                            "value": "duo-subscriber/examples/main.rs:21"
+                        }
+                    ],
+                    "logs": [
+                        {
+                            "timestamp": 1685787838395674,
+                            "fields": [
+                                {
+                                    "key": "message",
+                                    "type": "string",
+                                    "value": "hello baz!"
+                                },
+                                {
+                                    "key": "level",
+                                    "type": "string",
+                                    "value": "debug"
+                                }
+                            ]
+                        }
+                    ],
+                    "processID": "example:0",
+                    "warnings": null,
+                    "flags": 1
+                },
+                {
+                    "traceID": "17906653982545417375",
+                    "references": [
+                        {
+                            "refType": "CHILD_OF",
+                            "traceID": "17906653982545417375",
+                            "spanID": "17906653982545417375"
+                        }
+                    ],
+                    "spanID": "9105230036782898140",
+                    "operationName": "bar",
+                    "startTime": 1685787838395631,
+                    "duration": 111,
+                    "tags": [
+                        {
+                            "key": "@line",
+                            "type": "string",
+                            "value": "duo-subscriber/examples/main.rs:16"
+                        },
+                        {
+                            "key": "@busy",
+                            "type": "string",
+                            "value": "103us"
+                        },
+                        {
+                            "key": "@idle",
+                            "type": "string",
+                            "value": "2us"
+                        }
+                    ],
+                    "logs": [],
+                    "processID": "example:0",
+                    "warnings": null,
+                    "flags": 1
+                },
+                {
+                    "traceID": "17906653982545417375",
+                    "references": [
+                        {
+                            "refType": "CHILD_OF",
+                            "traceID": "17906653982545417375",
+                            "spanID": "17906653982545417375"
+                        }
+                    ],
+                    "spanID": "955150041076236149",
+                    "operationName": "foz",
+                    "startTime": 1685787838395797,
+                    "duration": 71,
+                    "tags": [
+                        {
+                            "key": "@busy",
+                            "type": "string",
+                            "value": "60us"
+                        },
+                        {
+                            "key": "@idle",
+                            "type": "string",
+                            "value": "3us"
+                        },
+                        {
+                            "key": "@line",
+                            "type": "string",
+                            "value": "duo-subscriber/examples/main.rs:26"
+                        },
+                        {
+                            "key": "error",
+                            "type": "bool",
+                            "value": true
+                        }
+                    ],
+                    "logs": [
+                        {
+                            "timestamp": 1685787838395830,
+                            "fields": [
+                                {
+                                    "key": "level",
+                                    "type": "string",
+                                    "value": "debug"
+                                },
+                                {
+                                    "key": "message",
+                                    "type": "string",
+                                    "value": "hello foz!"
+                                }
+                            ]
+                        },
+                        {
+                            "timestamp": 1685787838395858,
+                            "fields": [
+                                {
+                                    "key": "level",
+                                    "type": "string",
+                                    "value": "error"
+                                },
+                                {
+                                    "key": "message",
+                                    "type": "string",
+                                    "value": "Oops!"
+                                }
+                            ]
+                        }
+                    ],
+                    "processID": "example:0",
+                    "warnings": null,
+                    "flags": 1
+                },
+                {
+                    "traceID": "17906653982545417375",
+                    "references": [],
+                    "spanID": "17906653982545417375",
+                    "operationName": "foo",
+                    "startTime": 1685787838395477,
+                    "duration": 404,
+                    "tags": [
+                        {
+                            "key": "@idle",
+                            "type": "string",
+                            "value": "30us"
+                        },
+                        {
+                            "key": "@busy",
+                            "type": "string",
+                            "value": "361us"
+                        },
+                        {
+                            "key": "@line",
+                            "type": "string",
+                            "value": "duo-subscriber/examples/main.rs:8"
+                        }
+                    ],
+                    "logs": [
+                        {
+                            "timestamp": 1685787838395588,
+                            "fields": [
+                                {
+                                    "key": "level",
+                                    "type": "string",
+                                    "value": "debug"
+                                },
+                                {
+                                    "key": "test",
+                                    "type": "bool",
+                                    "value": true
+                                },
+                                {
+                                    "key": "message",
+                                    "type": "string",
+                                    "value": "hello foo!"
+                                }
+                            ]
+                        },
+                        {
+                            "timestamp": 1685787838395776,
+                            "fields": [
+                                {
+                                    "key": "level",
+                                    "type": "string",
+                                    "value": "debug"
+                                },
+                                {
+                                    "key": "message",
+                                    "type": "string",
+                                    "value": "called bar!"
+                                }
+                            ]
+                        }
+                    ],
+                    "processID": "example:0",
+                    "warnings": null,
+                    "flags": 1
+                }
+            ],
+            "processes": {
+                "example:0": {
+                    "serviceName": "example",
+                    "tags": [
+                        {
+                            "key": "duo-version",
+                            "type": "string",
+                            "value": "0.1.0"
+                        }
+                    ]
+                }
+            },
+            "warnings": null
+        }
+    ],
+    "total": 0,
+    "limit": 0,
+    "offset": 0,
+    "errors": null
+}

@@ -20,6 +20,7 @@ mod aggregator;
 mod arrow;
 mod grpc;
 mod memory;
+mod staging;
 mod models;
 mod partition;
 mod query;
