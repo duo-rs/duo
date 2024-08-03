@@ -24,7 +24,7 @@ tower = "0.4"
 tracing.workspace = true
 tracing-subscriber.workspace = true
 datafusion = "40"
-rust-embed = "6"
+rust-embed = "8.5"
 mime_guess = "2"
 
 [dev-dependencies]
