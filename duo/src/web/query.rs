@@ -52,7 +52,7 @@ impl<'a> TraceQuery<'a> {
             if traces.contains_key(&span.trace_id) {
                 traces
                     .entry(span.trace_id)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(span);
                 continue;
             }
@@ -87,7 +87,7 @@ impl<'a> TraceQuery<'a> {
 
             traces
                 .entry(span.trace_id)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(span);
         }
 

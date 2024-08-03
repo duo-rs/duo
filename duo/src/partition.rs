@@ -69,7 +69,7 @@ impl PartitionWriter {
     }
 
     async fn write_partition(&self, table_name: &str, record_batchs: &[RecordBatch]) -> Result<()> {
-        let schema = if let Some(rb) = record_batchs.get(0) {
+        let schema = if let Some(rb) = record_batchs.first() {
             rb.schema()
         } else {
             return Ok(());

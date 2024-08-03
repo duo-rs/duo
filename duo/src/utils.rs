@@ -191,8 +191,8 @@ mod tests {
 
     fn time_period_from_str(start: &str, end: &str) -> TimePeriod {
         TimePeriod::new(
-            OffsetDateTime::parse(start, &Rfc3339).unwrap().into(),
-            OffsetDateTime::parse(end, &Rfc3339).unwrap().into(),
+            OffsetDateTime::parse(start, &Rfc3339).unwrap(),
+            OffsetDateTime::parse(end, &Rfc3339).unwrap(),
             1,
         )
     }
