@@ -3,6 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/duo.svg)](https://crates.io/crates/duo)
 ![Crates.io](https://img.shields.io/crates/d/duo)
 [![license-mit](https://img.shields.io/badge/license-MIT-yellow.svg)](./LICENSE)
+[![dependency status](https://deps.rs/repo/github/duo-rs/duo/status.svg)](https://deps.rs/repo/github/duo-rs/duo)
 
 **Observability duo: Logging and Tracing.**
 

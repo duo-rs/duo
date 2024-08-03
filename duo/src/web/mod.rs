@@ -1,7 +1,7 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use axum::{
-    body::{boxed, Full},
+    body::Body,
     extract::Extension,
     http::{header, StatusCode, Uri},
     response::{Html, IntoResponse, Response},
@@ -39,7 +39,7 @@ where
 
         match UiAssets::get(path.as_str()) {
             Some(content) => {
-                let body = boxed(Full::from(content.data));
+                let body = Body::from(content.data);
                 let mime = mime_guess::from_path(path).first_or_octet_stream();
                 Response::builder()
                     .header(header::CONTENT_TYPE, mime.as_ref())
@@ -48,7 +48,7 @@ where
             }
             None => Response::builder()
                 .status(StatusCode::NOT_FOUND)
-                .body(boxed(Full::from("404")))
+                .body(Body::from("404"))
                 .unwrap(),
         }
     }
@@ -59,6 +59,7 @@ pub async fn run_web_server(
     port: u16,
 ) -> anyhow::Result<()> {
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    let listener = tokio::net::TcpListener::bind(addr).await?;
     let layer = ServiceBuilder::new().layer(Extension(memory_store));
 
     let app = Router::new()
@@ -74,9 +75,7 @@ pub async fn run_web_server(
         .layer(layer);
 
     println!("Web server listening on http://{}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await?;
+    axum::serve(listener, app.into_make_service()).await?;
     Ok(())
 }
 

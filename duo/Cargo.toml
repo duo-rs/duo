@@ -9,7 +9,7 @@ license.workspace = true
 [dependencies]
 anyhow.workspace = true
 arrow-schema = "52.1.0"
-axum = "0.6"
+axum = "0.7"
 rand.workspace = true
 clap = { version = "4", default-features = false, features = ["std", "derive"] }
 duo-api.workspace = true
