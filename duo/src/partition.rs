@@ -1,8 +1,8 @@
 use std::{fs::File, io::Write, vec};
 
 use anyhow::Result;
-use arrow_array::RecordBatch;
-use parquet::arrow::AsyncArrowWriter;
+use datafusion::arrow::array::RecordBatch;
+use datafusion::parquet::arrow::AsyncArrowWriter;
 use rand::{rngs::ThreadRng, Rng};
 use time::OffsetDateTime;
 use tracing::debug;
@@ -83,7 +83,7 @@ impl PartitionWriter {
             File::create(path.join(format!("{}.parquet", ThreadRng::default().gen::<u32>())))?;
 
         let mut buffer = vec![];
-        let mut writer = AsyncArrowWriter::try_new(&mut buffer, schema, 0, None)?;
+        let mut writer = AsyncArrowWriter::try_new(&mut buffer, schema, None)?;
         for rb in record_batchs {
             if rb.num_rows() == 0 {
                 continue;

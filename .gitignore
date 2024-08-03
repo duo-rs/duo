@@ -16,3 +16,4 @@ Cargo.lock
 .history
 
 process.json
+.DS_Store

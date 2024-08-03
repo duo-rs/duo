@@ -1,10 +1,10 @@
-use arrow_json::{reader::infer_json_schema_from_iterator, ReaderBuilder};
+use datafusion::arrow::json::{reader::infer_json_schema_from_iterator, ReaderBuilder};
 use serde_json::{Map, Value as JsonValue};
 use std::sync::Arc;
 
 use crate::{Log, Span};
 use anyhow::Result;
-use arrow_array::{Int64Array, RecordBatch, StringArray, UInt64Array};
+use datafusion::arrow::array::{Int64Array, RecordBatch, StringArray, UInt64Array};
 use arrow_schema::{DataType, Field, Schema, SchemaRef};
 
 pub fn schema_span() -> SchemaRef {

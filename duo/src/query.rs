@@ -1,7 +1,7 @@
 use std::{path::PathBuf, sync::Arc};
 
 use anyhow::Result;
-use arrow_json::writer::record_batches_to_json_rows;
+use datafusion::arrow::json::ArrayWriter;
 use datafusion::{
     datasource::{
         file_format::parquet::ParquetFormat,
@@ -11,7 +11,6 @@ use datafusion::{
     prelude::{Expr, SessionContext},
 };
 use serde::de::DeserializeOwned;
-use serde_json::Value;
 use time::{Duration, OffsetDateTime};
 
 use crate::{arrow::schema_span, utils::TimePeriod, Log, Span};
@@ -52,10 +51,9 @@ impl PartitionQuery {
     }
 
     async fn get_table(&self, table_name: &str) -> Result<Arc<dyn TableProvider>> {
-        let listing_options = ListingOptions::new(Arc::new(
-            ParquetFormat::default().with_enable_pruning(Some(true)),
-        ))
-        .with_file_extension(".parquet");
+        let listing_options =
+            ListingOptions::new(Arc::new(ParquetFormat::default().with_enable_pruning(true)))
+                .with_file_extension(".parquet");
         let mut listing_table_config =
             ListingTableConfig::new_with_multi_paths(self.table_paths(table_name))
                 .with_listing_options(listing_options);
@@ -74,11 +72,16 @@ impl PartitionQuery {
     ) -> Result<impl IntoIterator<Item = T>> {
         let df = self.ctx.read_table(self.get_table(table_name).await?)?;
         let batch = df.filter(expr)?.collect().await.unwrap();
-        let json_values = record_batches_to_json_rows(&batch.iter().collect::<Vec<_>>())
-            .unwrap_or_default()
-            .into_iter()
-            .map(|value| serde_json::from_value::<T>(Value::Object(value)).unwrap());
-        Ok(json_values)
+        let buf = Vec::new();
+        let mut writer = ArrayWriter::new(buf);
+        writer.write_batches(&batch.iter().collect::<Vec<_>>())?;
+        writer.finish()?;
+        let json_values = writer.into_inner();
+        // .into_iter()
+        // .map(|value| serde_json::from_value::<T>(Value::Object(value)).unwrap());
+        // Ok(json_values)
+        let json_rows: Vec<_> = serde_json::from_reader(json_values.as_slice()).unwrap();
+        Ok(json_rows)
     }
 
     pub async fn query_span(&self, expr: Expr) -> Result<Vec<Span>> {
