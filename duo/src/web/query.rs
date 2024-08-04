@@ -50,10 +50,7 @@ impl<'a> TraceQuery<'a> {
 
         for span in total_spans {
             if traces.contains_key(&span.trace_id) {
-                traces
-                    .entry(span.trace_id)
-                    .or_default()
-                    .push(span);
+                traces.entry(span.trace_id).or_default().push(span);
                 continue;
             }
 
@@ -85,10 +82,7 @@ impl<'a> TraceQuery<'a> {
                 _ => {}
             }
 
-            traces
-                .entry(span.trace_id)
-                .or_default()
-                .push(span);
+            traces.entry(span.trace_id).or_default().push(span);
         }
 
         let trace_ids = traces.keys().collect::<Vec<_>>();

@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use crate::{Log, Span};
 use anyhow::Result;
-use datafusion::arrow::array::{Int64Array, RecordBatch, StringArray, UInt64Array};
 use arrow_schema::{DataType, Field, Schema, SchemaRef};
+use datafusion::arrow::array::{Int64Array, RecordBatch, StringArray, UInt64Array};
 
 pub fn schema_span() -> SchemaRef {
     Arc::new(Schema::new(vec![

@@ -77,9 +77,6 @@ impl PartitionQuery {
         writer.write_batches(&batch.iter().collect::<Vec<_>>())?;
         writer.finish()?;
         let json_values = writer.into_inner();
-        // .into_iter()
-        // .map(|value| serde_json::from_value::<T>(Value::Object(value)).unwrap());
-        // Ok(json_values)
         let json_rows: Vec<_> = serde_json::from_reader(json_values.as_slice()).unwrap();
         Ok(json_rows)
     }
