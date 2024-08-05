@@ -1,7 +1,6 @@
 use crate::query::PartitionQuery;
 use crate::{MemoryStore, Span, TraceExt};
 use datafusion::prelude::*;
-use std::borrow::Cow;
 use std::collections::HashMap;
 use time::{Duration, OffsetDateTime};
 use tracing::debug;
@@ -22,8 +21,12 @@ impl<'a> TraceQuery<'a> {
         let process_prefix = p.service;
         let limit = p.limit.unwrap_or(DEFAUT_TRACE_LIMIT);
         // <trace_id, spans>
-        let mut traces = HashMap::<u64, Vec<Cow<Span>>>::new();
-        let mut total_spans = self.0.spans().iter().map(Cow::Borrowed).collect::<Vec<_>>();
+        let mut traces = HashMap::<u64, Vec<Span>>::new();
+        // let mut total_spans = self.0.spans().iter().map(Cow::Borrowed).collect::<Vec<_>>();
+
+        let expr = col("process_id").like(lit(format!("{process_prefix}%")));
+        debug!("query span...");
+        let total_spans = self.0.query_span(expr).await.unwrap();
 
         // Don't query data from storage in memory mode
         let pq = if crate::is_memory_mode() {
@@ -36,17 +39,17 @@ impl<'a> TraceQuery<'a> {
                 p.end.unwrap_or(OffsetDateTime::now_utc()),
             ))
         };
-        if let Some(pq) = pq.as_ref() {
-            let expr = col("process_id").like(lit(format!("{process_prefix}%")));
-            let spans = pq
-                .query_span(expr)
-                .await
-                .unwrap_or_default()
-                .into_iter()
-                .map(Cow::Owned);
-            debug!("spans from parquet: {}", spans.len());
-            total_spans.extend(spans);
-        }
+
+        // if let Some(pq) = pq.as_ref() {
+        //     let spans = pq
+        //         .query_span(expr)
+        //         .await
+        //         .unwrap_or_default()
+        //         .into_iter()
+        //         .map(Cow::Owned);
+        //     debug!("spans from parquet: {}", spans.len());
+        //     total_spans.extend(spans);
+        // }
 
         for span in total_spans {
             if traces.contains_key(&span.trace_id) {
@@ -86,32 +89,35 @@ impl<'a> TraceQuery<'a> {
         }
 
         let trace_ids = traces.keys().collect::<Vec<_>>();
-        let mut trace_logs = self
-            .0
-            .logs()
-            .iter()
-            .filter(|log| {
-                if let Some(id) = log.trace_id {
-                    trace_ids.contains(&&id)
-                } else {
-                    false
-                }
-            })
-            .cloned()
-            .collect::<Vec<_>>();
+        // let mut trace_logs = self
+        //     .0
+        //     .logs()
+        //     .iter()
+        //     .filter(|log| {
+        //         if let Some(id) = log.trace_id {
+        //             trace_ids.contains(&&id)
+        //         } else {
+        //             false
+        //         }
+        //     })
+        //     .cloned()
+        //     .collect::<Vec<_>>();
 
-        if let Some(pq) = pq.as_ref() {
-            let logs = pq
-                .query_log(
-                    col("trace_id")
-                        .in_list(trace_ids.into_iter().map(|id| lit(*id)).collect(), false),
-                )
-                .await
-                .unwrap_or_default()
-                .into_iter();
-            debug!("span logs from parquet: {}", logs.len());
-            trace_logs.extend(logs);
-        }
+        let expr =
+            col("trace_id").in_list(trace_ids.into_iter().map(|id| lit(*id)).collect(), false);
+        let trace_logs = self.0.query_log(expr).await.unwrap();
+        // if let Some(pq) = pq.as_ref() {
+        //     let logs = pq
+        //         .query_log(
+        //             col("trace_id")
+        //                 .in_list(trace_ids.into_iter().map(|id| lit(*id)).collect(), false),
+        //         )
+        //         .await
+        //         .unwrap_or_default()
+        //         .into_iter();
+        //     debug!("span logs from parquet: {}", logs.len());
+        //     trace_logs.extend(logs);
+        // }
         traces
             .into_iter()
             .take(limit)
@@ -120,7 +126,7 @@ impl<'a> TraceQuery<'a> {
                 spans: spans
                     .iter()
                     .map(|span| {
-                        let mut span = span.clone().into_owned();
+                        let mut span = span.clone();
                         span.correlate_span_logs(&trace_logs);
                         span
                     })
@@ -138,33 +144,34 @@ impl<'a> TraceQuery<'a> {
             Some(PartitionQuery::recent_hours(".".into(), 12))
         };
 
-        let mut trace_spans = self
-            .0
-            .spans()
-            .iter()
-            .filter(|span| span.trace_id == trace_id)
-            .map(Cow::Borrowed)
-            .collect::<Vec<_>>();
+        let mut trace_spans: Vec<Span> = vec![];
+        //  self
+        //     .0
+        //     .spans()
+        //     .iter()
+        //     .filter(|span| span.trace_id == trace_id)
+        //     .map(Cow::Borrowed)
+        //     .collect::<Vec<_>>();
         if let Some(pq) = pq.as_ref() {
             let spans = pq
                 .query_span(col("trace_id").eq(lit(trace_id)))
                 .await
-                .unwrap_or_default()
-                .into_iter()
-                .map(Cow::Owned);
+                .unwrap_or_default();
             trace_spans.extend(spans);
         }
 
         if trace_spans.is_empty() {
             None
         } else {
-            let mut trace_logs = self
-                .0
-                .logs()
-                .iter()
-                .filter(|log| log.trace_id == Some(trace_id))
-                .cloned()
-                .collect::<Vec<_>>();
+            let mut trace_logs = vec![];
+
+            // self
+            //     .0
+            //     .logs()
+            //     .iter()
+            //     .filter(|log| log.trace_id == Some(trace_id))
+            //     .cloned()
+            //     .collect::<Vec<_>>();
 
             if let Some(pq) = pq.as_ref() {
                 let logs = pq
@@ -179,7 +186,7 @@ impl<'a> TraceQuery<'a> {
                 spans: trace_spans
                     .into_iter()
                     .map(|span| {
-                        let mut span = span.clone().into_owned();
+                        let mut span = span.clone();
                         span.correlate_span_logs(&trace_logs);
                         span
                     })

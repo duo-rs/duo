@@ -1,5 +1,6 @@
-use std::{sync::Arc, time::Duration};
+use std::{mem, sync::Arc, time::Duration};
 
+use crate::{partition::PartitionWriter, Log, MemoryStore, SpanAggregator};
 use duo_api::instrument::{
     instrument_server::Instrument, RecordEventRequest, RecordEventResponse, RecordSpanRequest,
     RecordSpanResponse, RegisterProcessRequest, RegisterProcessResponse,
@@ -8,11 +9,10 @@ use parking_lot::RwLock;
 use tonic::{Request, Response, Status};
 use tracing::{debug, info};
 
-use crate::{partition::PartitionWriter, MemoryStore, SpanAggregator};
-
 pub struct DuoServer {
     memory_store: Arc<RwLock<MemoryStore>>,
     aggregator: Arc<RwLock<SpanAggregator>>,
+    logs: Arc<RwLock<Vec<Log>>>,
 }
 
 impl DuoServer {
@@ -20,21 +20,28 @@ impl DuoServer {
         Self {
             memory_store,
             aggregator: Arc::new(RwLock::new(SpanAggregator::new())),
+            logs: Arc::new(RwLock::new(vec![])),
         }
     }
 
-    pub fn run(&mut self) {
+    pub fn spawn(&mut self) {
         let aggregator = Arc::clone(&self.aggregator);
         let memory_store = Arc::clone(&self.memory_store);
+        let logs = Arc::clone(&self.logs);
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(1));
             loop {
                 interval.tick().await;
+
+                let logs = mem::take(&mut *logs.write());
                 let spans = aggregator.write().aggregate();
-                if spans.is_empty() {
+                if logs.is_empty() || spans.is_empty() {
                     continue;
                 }
+
                 let mut memory_store = memory_store.write();
+
+                memory_store.merge_logs(logs);
                 memory_store.merge_spans(spans);
             }
         });
@@ -44,22 +51,22 @@ impl DuoServer {
             return;
         }
 
-        let memory_store = Arc::clone(&self.memory_store);
-        tokio::spawn(async move {
-            // TODO: replace interval with job scheduler
-            let mut interval = tokio::time::interval(Duration::from_secs(10));
-            loop {
-                interval.tick().await;
-                let (logs, spans) = {
-                    let mut guard = memory_store.write();
-                    (guard.take_logs(), guard.take_spans())
-                };
-                let mut pw = PartitionWriter::with_minute();
-                pw.write_logs(logs).unwrap();
-                pw.write_spans(spans).unwrap();
-                pw.flush().await.expect("Write parquet failed");
-            }
-        });
+        // let memory_store = Arc::clone(&self.memory_store);
+        // tokio::spawn(async move {
+        //     // TODO: replace interval with job scheduler
+        //     let mut interval = tokio::time::interval(Duration::from_secs(10));
+        //     loop {
+        //         interval.tick().await;
+        //         let (logs, spans) = {
+        //             let mut guard = memory_store.write();
+        //             (guard.take_logs(), guard.take_spans())
+        //         };
+        //         let mut pw = PartitionWriter::with_minute();
+        //         pw.write_logs(logs).unwrap();
+        //         pw.write_spans(spans).unwrap();
+        //         pw.flush().await.expect("Write parquet failed");
+        //     }
+        // });
     }
 }
 
@@ -105,8 +112,9 @@ impl Instrument for DuoServer {
             .into_inner()
             .log
             .ok_or_else(|| tonic::Status::invalid_argument("missing event"))?;
-        let mut guard = self.memory_store.write();
-        guard.record_log(log);
+        // let mut guard = self.memory_store.write();
+        // guard.record_log(log);
+        self.logs.write().push(log.into());
         Ok(Response::new(RecordEventResponse {}))
     }
 }
