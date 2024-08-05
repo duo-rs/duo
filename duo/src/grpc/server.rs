@@ -1,6 +1,7 @@
-use std::{mem, sync::Arc, time::Duration};
+use std::{fs::File, mem, sync::Arc, time::Duration};
 
-use crate::{partition::PartitionWriter, Log, MemoryStore, SpanAggregator};
+use crate::{arrow::schema_span, partition::PartitionWriter, Log, MemoryStore, SpanAggregator};
+use datafusion::arrow::ipc::writer::FileWriter;
 use duo_api::instrument::{
     instrument_server::Instrument, RecordEventRequest, RecordEventResponse, RecordSpanRequest,
     RecordSpanResponse, RegisterProcessRequest, RegisterProcessResponse,
@@ -39,10 +40,9 @@ impl DuoServer {
                     continue;
                 }
 
-                let mut memory_store = memory_store.write();
-
-                memory_store.merge_logs(logs);
-                memory_store.merge_spans(spans);
+                let mut guard = memory_store.write();
+                guard.merge_logs(logs);
+                guard.merge_spans(spans);
             }
         });
 
@@ -51,7 +51,36 @@ impl DuoServer {
             return;
         }
 
-        // let memory_store = Arc::clone(&self.memory_store);
+        let memory_store = Arc::clone(&self.memory_store);
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(10));
+            loop {
+                interval.tick().await;
+
+                let guard = memory_store.read();
+                if !guard.span_batches.is_empty() {
+                    let mut span_writer =
+                        FileWriter::try_new(File::create("span.arrow").unwrap(), &schema_span())
+                            .unwrap();
+                    for batch in &guard.span_batches {
+                        span_writer.write(batch).unwrap();
+                    }
+                    span_writer.finish().unwrap();
+                }
+
+                if !guard.log_batches.is_empty() {
+                    let mut log_writer =
+                        FileWriter::try_new(File::create("log.arrow").unwrap(), &guard.log_schema)
+                            .unwrap();
+                    let guard = memory_store.read();
+                    for batch in &guard.log_batches {
+                        log_writer.write(batch).unwrap();
+                    }
+                    log_writer.finish().unwrap();
+                }
+            }
+        });
+
         // tokio::spawn(async move {
         //     // TODO: replace interval with job scheduler
         //     let mut interval = tokio::time::interval(Duration::from_secs(10));

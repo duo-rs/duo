@@ -25,7 +25,6 @@ impl<'a> TraceQuery<'a> {
         // let mut total_spans = self.0.spans().iter().map(Cow::Borrowed).collect::<Vec<_>>();
 
         let expr = col("process_id").like(lit(format!("{process_prefix}%")));
-        debug!("query span...");
         let total_spans = self.0.query_span(expr).await.unwrap();
 
         // Don't query data from storage in memory mode

@@ -23,9 +23,9 @@ use serde::de::DeserializeOwned;
 pub struct MemoryStore {
     // Collection of services.
     services: HashMap<String, Vec<Process>>,
-    log_schema: Schema,
-    span_batches: Vec<RecordBatch>,
-    log_batches: Vec<RecordBatch>,
+    pub log_schema: Schema,
+    pub span_batches: Vec<RecordBatch>,
+    pub log_batches: Vec<RecordBatch>,
 }
 
 impl Debug for MemoryStore {
