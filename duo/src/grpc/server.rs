@@ -81,21 +81,27 @@ impl DuoServer {
             }
         });
 
-        // tokio::spawn(async move {
-        //     // TODO: replace interval with job scheduler
-        //     let mut interval = tokio::time::interval(Duration::from_secs(10));
-        //     loop {
-        //         interval.tick().await;
-        //         let (logs, spans) = {
-        //             let mut guard = memory_store.write();
-        //             (guard.take_logs(), guard.take_spans())
-        //         };
-        //         let mut pw = PartitionWriter::with_minute();
-        //         pw.write_logs(logs).unwrap();
-        //         pw.write_spans(spans).unwrap();
-        //         pw.flush().await.expect("Write parquet failed");
-        //     }
-        // });
+        let memory_store = Arc::clone(&self.memory_store);
+        tokio::spawn(async move {
+            // TODO: replace interval with job scheduler
+            let mut interval = tokio::time::interval(Duration::from_secs(60));
+            loop {
+                interval.tick().await;
+
+                let pw = PartitionWriter::with_minute();
+                let mut guard = memory_store.write();
+
+                let span_batches = mem::take(&mut guard.span_batches);
+                if !span_batches.is_empty() {
+                    pw.write_partition("span", &span_batches).await.unwrap();
+                }
+
+                let log_batches = mem::take(&mut guard.log_batches);
+                if !log_batches.is_empty() {
+                    pw.write_partition("log", &log_batches).await.unwrap();
+                }
+            }
+        });
     }
 }
 
