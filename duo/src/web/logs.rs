@@ -33,15 +33,7 @@ pub(super) async fn list(
 ) -> impl IntoResponse {
     let process_prefix = p.service;
     let limit = p.limit.unwrap_or(DEFAUT_LOG_LIMIT);
-    let mut total_logs = {
-        let memory_store = memory_store.read();
-        memory_store
-            .logs()
-            .iter()
-            .filter(|log| log.process_id.starts_with(&process_prefix))
-            .cloned()
-            .collect::<Vec<_>>()
-    };
+    let mut total_logs = vec![];
     let pq = if crate::is_memory_mode() || total_logs.len() >= limit {
         None
     } else {

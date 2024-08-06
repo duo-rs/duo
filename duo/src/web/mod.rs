@@ -101,8 +101,8 @@ async fn stats(Extension(memory_store): Extension<Arc<RwLock<MemoryStore>>>) -> 
     let memory_store = memory_store.read();
     serde_json::json!({
             "process": memory_store.processes(),
-            "logs": memory_store.logs().len(),
-            "spans": memory_store.spans().len(),
+            "logs": 0,
+            "spans": 0,
     })
     .to_string()
 }
