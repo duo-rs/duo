@@ -22,7 +22,6 @@ impl<'a> TraceQuery<'a> {
         let limit = p.limit.unwrap_or(DEFAUT_TRACE_LIMIT);
         // <trace_id, spans>
         let mut traces = HashMap::<u64, Vec<Span>>::new();
-        // let mut total_spans = self.0.spans().iter().map(Cow::Borrowed).collect::<Vec<_>>();
 
         let expr = col("process_id").like(lit(format!("{process_prefix}%")));
         let mut total_spans = self.0.query_span(expr.clone()).await.unwrap();
@@ -83,19 +82,6 @@ impl<'a> TraceQuery<'a> {
         }
 
         let trace_ids = traces.keys().collect::<Vec<_>>();
-        // let mut trace_logs = self
-        //     .0
-        //     .logs()
-        //     .iter()
-        //     .filter(|log| {
-        //         if let Some(id) = log.trace_id {
-        //             trace_ids.contains(&&id)
-        //         } else {
-        //             false
-        //         }
-        //     })
-        //     .cloned()
-        //     .collect::<Vec<_>>();
 
         let expr =
             col("trace_id").in_list(trace_ids.into_iter().map(|id| lit(*id)).collect(), false);
@@ -131,35 +117,17 @@ impl<'a> TraceQuery<'a> {
             Some(PartitionQuery::recent_hours(".".into(), 12))
         };
 
-        let mut trace_spans: Vec<Span> = vec![];
-        //  self
-        //     .0
-        //     .spans()
-        //     .iter()
-        //     .filter(|span| span.trace_id == trace_id)
-        //     .map(Cow::Borrowed)
-        //     .collect::<Vec<_>>();
+        let expr = col("trace_id").eq(lit(trace_id));
+        let mut trace_spans: Vec<Span> = self.0.query_span(expr.clone()).await.unwrap_or_default();
         if let Some(pq) = pq.as_ref() {
-            let spans = pq
-                .query_span(col("trace_id").eq(lit(trace_id)))
-                .await
-                .unwrap_or_default();
+            let spans = pq.query_span(expr.clone()).await.unwrap_or_default();
             trace_spans.extend(spans);
         }
 
         if trace_spans.is_empty() {
             None
         } else {
-            let mut trace_logs = vec![];
-
-            // self
-            //     .0
-            //     .logs()
-            //     .iter()
-            //     .filter(|log| log.trace_id == Some(trace_id))
-            //     .cloned()
-            //     .collect::<Vec<_>>();
-
+            let mut trace_logs = self.0.query_log(expr.clone()).await.unwrap_or_default();
             if let Some(pq) = pq.as_ref() {
                 let logs = pq
                     .query_log(col("trace_id").eq(lit(trace_id)))
