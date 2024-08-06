@@ -31,7 +31,7 @@ pub struct MemoryStore {
 impl Debug for MemoryStore {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("MemoryStore")
-            .field("services", &self.services)
+            .field("services", &self.services.len())
             .finish()
     }
 }
@@ -73,6 +73,10 @@ impl MemoryStore {
     }
 
     pub async fn query_span(&self, expr: Expr) -> Result<Vec<Span>> {
+        if self.span_batches.is_empty() {
+            return Ok(vec![]);
+        }
+
         let ctx = SessionContext::new();
         ctx.register_table(
             "span",
@@ -82,17 +86,14 @@ impl MemoryStore {
             )?),
         )?;
 
-        let batches = ctx
-            .table("span")
-            .await?
-            .filter(expr)?
-            .collect()
-            .await
-            .unwrap();
+        let batches = ctx.table("span").await?.filter(expr)?.collect().await?;
         serialize_record_batche(&batches)
     }
 
     pub async fn query_log(&self, expr: Expr) -> Result<Vec<Log>> {
+        if self.log_batches.is_empty() {
+            return Ok(vec![]);
+        }
         let ctx = SessionContext::new();
         ctx.register_table(
             "log",
@@ -162,9 +163,10 @@ impl MemoryStore {
         let schema = batches.schema();
         self.log_schema = Schema::try_merge(vec![
             mem::replace(&mut self.log_schema, Schema::empty()),
-            Schema::new_with_metadata(schema.fields().clone(), schema.metadata().clone()),
+            (&*schema).clone(),
         ])
         .unwrap();
+        // tracing::debug!(schema =?self.log_schema, "merge log schema");
         self.log_batches.push(batches);
     }
 
@@ -183,11 +185,15 @@ impl MemoryStore {
 }
 
 fn serialize_record_batche<T: DeserializeOwned>(batch: &[RecordBatch]) -> Result<Vec<T>> {
+    if batch.is_empty() {
+        return Ok(vec![]);
+    }
+
     let buf = Vec::new();
     let mut writer = ArrayWriter::new(buf);
     writer.write_batches(&batch.iter().collect::<Vec<_>>())?;
     writer.finish()?;
     let json_values = writer.into_inner();
-    let json_rows: Vec<_> = serde_json::from_reader(json_values.as_slice())?;
+    let json_rows: Vec<_> = serde_json::from_reader(json_values.as_slice()).unwrap_or_default();
     Ok(json_rows)
 }
