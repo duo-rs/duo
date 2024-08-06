@@ -54,6 +54,7 @@ impl DuoServer {
         let memory_store = Arc::clone(&self.memory_store);
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(10));
+            interval.tick().await;
             loop {
                 interval.tick().await;
 
@@ -85,6 +86,7 @@ impl DuoServer {
         tokio::spawn(async move {
             // TODO: replace interval with job scheduler
             let mut interval = tokio::time::interval(Duration::from_secs(60));
+            interval.tick().await;
             loop {
                 interval.tick().await;
 
@@ -147,8 +149,6 @@ impl Instrument for DuoServer {
             .into_inner()
             .log
             .ok_or_else(|| tonic::Status::invalid_argument("missing event"))?;
-        // let mut guard = self.memory_store.write();
-        // guard.record_log(log);
         self.logs.write().push(log.into());
         Ok(Response::new(RecordEventResponse {}))
     }

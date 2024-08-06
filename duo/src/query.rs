@@ -50,7 +50,7 @@ impl PartitionQuery {
             .collect()
     }
 
-    async fn get_table(&self, table_name: &str) -> Result<Arc<dyn TableProvider>> {
+    pub async fn get_table(&self, table_name: &str) -> Result<Arc<dyn TableProvider>> {
         let listing_options =
             ListingOptions::new(Arc::new(ParquetFormat::default().with_enable_pruning(true)))
                 .with_file_extension(".parquet");
@@ -77,7 +77,7 @@ impl PartitionQuery {
         writer.write_batches(&batch.iter().collect::<Vec<_>>())?;
         writer.finish()?;
         let json_values = writer.into_inner();
-        let json_rows: Vec<_> = serde_json::from_reader(json_values.as_slice()).unwrap();
+        let json_rows: Vec<_> = serde_json::from_reader(json_values.as_slice()).unwrap_or_default();
         Ok(json_rows)
     }
 
