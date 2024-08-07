@@ -1,4 +1,4 @@
-use crate::query::PartitionQuery;
+use crate::partition::PartitionQuery;
 use crate::{MemoryStore, Span, TraceExt};
 use datafusion::prelude::*;
 use std::collections::HashMap;

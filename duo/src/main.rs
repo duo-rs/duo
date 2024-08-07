@@ -22,7 +22,6 @@ mod grpc;
 mod memory;
 mod models;
 mod partition;
-mod query;
 mod utils;
 mod web;
 
@@ -97,7 +96,8 @@ async fn main() -> Result<()> {
     tracing_subscriber::registry()
         .with(fmt::layer())
         .with(duo_layer)
-        .with(Targets::new().with_target("duo", Level::DEBUG))
+        // .with(Targets::new().with_target("duo", Level::DEBUG))
+        .with(Targets::new().with_default(Level::DEBUG))
         .init();
 
     run_web_server(memory_store, web_port).await?;

@@ -8,7 +8,7 @@ use parking_lot::RwLock;
 use serde::Deserialize;
 use time::{Duration, OffsetDateTime};
 
-use crate::query::PartitionQuery;
+use crate::partition::PartitionQuery;
 use crate::MemoryStore;
 
 use super::deser;
