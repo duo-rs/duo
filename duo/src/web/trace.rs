@@ -11,7 +11,7 @@ use time::{Duration, OffsetDateTime};
 use crate::{MemoryStore, TraceExt};
 
 use super::deser;
-use super::query::TraceQuery;
+use super::query::{filter_traces, get_trace_by_id};
 use super::JaegerData;
 
 #[derive(Debug, Deserialize)]
@@ -37,12 +37,7 @@ pub(super) async fn list(
     Query(parameters): Query<QueryParameters>,
     Extension(memory_store): Extension<Arc<RwLock<MemoryStore>>>,
 ) -> impl IntoResponse {
-    let memory_store = memory_store.read();
-    Json(JaegerData(
-        TraceQuery::new(&memory_store)
-            .filter_traces(parameters)
-            .await,
-    ))
+    Json(JaegerData(filter_traces(memory_store, parameters).await))
 }
 
 #[tracing::instrument]
@@ -67,15 +62,10 @@ pub(super) async fn get_by_id(
     Path(id): Path<String>,
     Extension(memory_store): Extension<Arc<RwLock<MemoryStore>>>,
 ) -> impl IntoResponse {
-    let memory_store = memory_store.read();
     let trace_id = id.parse::<u64>().ok();
-
     match trace_id {
         Some(trace_id) => {
-            if let Some(trace) = TraceQuery::new(&memory_store)
-                .get_trace_by_id(trace_id)
-                .await
-            {
+            if let Some(trace) = get_trace_by_id(memory_store, trace_id).await {
                 Json(JaegerData(vec![trace])).into_response()
             } else {
                 Json(JaegerData(Vec::<TraceExt>::new())).into_response()
