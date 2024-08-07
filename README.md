@@ -88,9 +88,9 @@ Run your application then check the http://127.0.0.1:3000 to see the tracing dat
 
 - [ ] Support logging diagnosing.
 
-- [ ] Support arrow-ipc WAL.
+- [x] Support arrow-ipc WAL.
 
-- [ ] Batch sync WAL to parquet files.
+- [x] Batch sync WAL to parquet files.
 
 - [ ] Support Object Store.
 

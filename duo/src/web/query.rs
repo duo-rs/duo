@@ -17,7 +17,6 @@ impl<'a> TraceQuery<'a> {
     }
 
     pub(super) async fn filter_traces(&self, p: QueryParameters) -> Vec<TraceExt> {
-        let processes = self.0.processes();
         let process_prefix = p.service;
         let limit = p.limit.unwrap_or(DEFAUT_TRACE_LIMIT);
         // <trace_id, spans>
@@ -50,9 +49,7 @@ impl<'a> TraceQuery<'a> {
                 continue;
             }
 
-            if !span.process_id.starts_with(&process_prefix) {
-                continue;
-            }
+            // Filter the root span, the child spans will be added in above.
             if let Some(span_name) = p.operation.as_ref() {
                 if &span.name != span_name {
                     continue;
@@ -83,6 +80,7 @@ impl<'a> TraceQuery<'a> {
 
         let trace_ids = traces.keys().collect::<Vec<_>>();
 
+        // TODO: make query parallel
         let expr =
             col("trace_id").in_list(trace_ids.into_iter().map(|id| lit(*id)).collect(), false);
         let mut trace_logs = self.0.query_log(expr.clone()).await.unwrap();
@@ -104,7 +102,7 @@ impl<'a> TraceQuery<'a> {
                         span
                     })
                     .collect(),
-                processes: processes.clone(),
+                processes: self.0.processes(),
             })
             .collect()
     }

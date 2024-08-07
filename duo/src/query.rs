@@ -71,7 +71,7 @@ impl PartitionQuery {
         expr: Expr,
     ) -> Result<impl IntoIterator<Item = T>> {
         let df = self.ctx.read_table(self.get_table(table_name).await?)?;
-        let batch = df.filter(expr)?.collect().await.unwrap();
+        let batch = df.filter(expr)?.collect().await.unwrap_or_default();
         let buf = Vec::new();
         let mut writer = ArrayWriter::new(buf);
         writer.write_batches(&batch.iter().collect::<Vec<_>>())?;

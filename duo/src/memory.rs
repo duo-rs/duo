@@ -78,15 +78,11 @@ impl MemoryStore {
         }
 
         let ctx = SessionContext::new();
-        ctx.register_table(
-            "span",
-            Arc::new(MemTable::try_new(
-                schema_span(),
-                vec![self.span_batches.clone()],
-            )?),
-        )?;
-
-        let batches = ctx.table("span").await?.filter(expr)?.collect().await?;
+        let df = ctx.read_table(Arc::new(MemTable::try_new(
+            schema_span(),
+            vec![self.span_batches.clone()],
+        )?))?;
+        let batches = df.filter(expr)?.collect().await?;
         serialize_record_batche(&batches)
     }
 
@@ -95,15 +91,11 @@ impl MemoryStore {
             return Ok(vec![]);
         }
         let ctx = SessionContext::new();
-        ctx.register_table(
-            "log",
-            Arc::new(MemTable::try_new(
-                Arc::new(self.log_schema.clone()),
-                vec![self.log_batches.clone()],
-            )?),
-        )?;
-
-        let batches = ctx.table("log").await?.filter(expr)?.collect().await?;
+        let df = ctx.read_table(Arc::new(MemTable::try_new(
+            Arc::new(self.log_schema.clone()),
+            vec![self.log_batches.clone()],
+        )?))?;
+        let batches = df.filter(expr)?.collect().await?;
         serialize_record_batche(&batches)
     }
 
