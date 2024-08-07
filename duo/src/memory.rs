@@ -163,7 +163,7 @@ impl MemoryStore {
         let schema = batches.schema();
         self.log_schema = Schema::try_merge(vec![
             mem::replace(&mut self.log_schema, Schema::empty()),
-            (&*schema).clone(),
+            (*schema).clone(),
         ])
         .unwrap();
         // tracing::debug!(schema =?self.log_schema, "merge log schema");
