@@ -129,10 +129,7 @@ impl<'a> TraceQuery<'a> {
         } else {
             let mut trace_logs = self.0.query_log(expr.clone()).await.unwrap_or_default();
             if let Some(pq) = pq.as_ref() {
-                let logs = pq
-                    .query_log(col("trace_id").eq(lit(trace_id)))
-                    .await
-                    .unwrap_or_default();
+                let logs = pq.query_log(expr).await.unwrap();
                 debug!("trace `{trace_id}` logs from parquet: {}", logs.len());
                 trace_logs.extend(logs);
             }

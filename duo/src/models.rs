@@ -121,7 +121,6 @@ impl From<&proto::Span> for Span {
             name: span.name.clone(),
             start: span
                 .start
-                .clone()
                 .and_then(|timestamp| {
                     SystemTime::try_from(timestamp)
                         .ok()
@@ -130,7 +129,6 @@ impl From<&proto::Span> for Span {
                 .unwrap_or_else(OffsetDateTime::now_utc),
             end: span
                 .end
-                .clone()
                 .and_then(|timestamp| {
                     SystemTime::try_from(timestamp)
                         .ok()
@@ -145,7 +143,7 @@ impl From<&proto::Span> for Span {
 
 impl From<proto::Log> for Log {
     fn from(log: proto::Log) -> Self {
-        let level = proto::Level::from_i32(log.level)
+        let level = proto::Level::try_from(log.level)
             .map(tracing::Level::from)
             .unwrap_or(tracing::Level::DEBUG);
 
