@@ -18,7 +18,7 @@ parking_lot = { version = "0.12", features = ["send_guard"] }
 serde.workspace = true
 serde_json.workspace = true
 time = { version = "0.3", features = ["parsing"] }
-tokio = { version = "1", features = ["rt-multi-thread"] }
+tokio = { version = "1", features = ["rt-multi-thread", "fs"] }
 tonic.workspace = true
 tower = "0.4"
 tracing.workspace = true

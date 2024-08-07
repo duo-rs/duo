@@ -1,6 +1,7 @@
 use std::{fs::File, mem, sync::Arc, time::Duration};
 
 use crate::{arrow::schema_span, partition::PartitionWriter, Log, MemoryStore, SpanAggregator};
+use arrow_schema::Schema;
 use datafusion::arrow::ipc::writer::FileWriter;
 use duo_api::instrument::{
     instrument_server::Instrument, RecordEventRequest, RecordEventResponse, RecordSpanRequest,
@@ -58,6 +59,11 @@ impl DuoServer {
             loop {
                 interval.tick().await;
 
+                println!(
+                    "ipc writing: is locked {}, is_locked_exclusive {}",
+                    memory_store.is_locked(),
+                    memory_store.is_locked_exclusive()
+                );
                 let guard = memory_store.read();
                 if !guard.span_batches.is_empty() {
                     let mut span_writer =
@@ -73,7 +79,6 @@ impl DuoServer {
                     let mut log_writer =
                         FileWriter::try_new(File::create("log.arrow").unwrap(), &guard.log_schema)
                             .unwrap();
-                    let guard = memory_store.read();
                     for batch in &guard.log_batches {
                         log_writer.write(batch).unwrap();
                     }
@@ -91,17 +96,29 @@ impl DuoServer {
                 interval.tick().await;
 
                 let pw = PartitionWriter::with_minute();
+                println!(
+                    "write partition: is locked {}, is_locked_exclusive {}",
+                    memory_store.is_locked(),
+                    memory_store.is_locked_exclusive()
+                );
                 let mut guard = memory_store.write();
+                println!("guard lock acquired");
 
+                // clear the previous log schema
+                guard.log_schema = Schema::empty();
                 let span_batches = mem::take(&mut guard.span_batches);
+                let log_batches = mem::take(&mut guard.log_batches);
+                drop(guard);
+
                 if !span_batches.is_empty() {
                     pw.write_partition("span", &span_batches).await.unwrap();
                 }
+                println!("write partition done: span");
 
-                let log_batches = mem::take(&mut guard.log_batches);
                 if !log_batches.is_empty() {
                     pw.write_partition("log", &log_batches).await.unwrap();
                 }
+                println!("write partition done: log");
             }
         });
     }

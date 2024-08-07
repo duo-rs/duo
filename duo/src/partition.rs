@@ -1,10 +1,9 @@
-use std::{fs::File, io::Write, vec};
-
 use anyhow::Result;
 use datafusion::arrow::array::RecordBatch;
 use datafusion::parquet::arrow::AsyncArrowWriter;
 use rand::{rngs::ThreadRng, Rng};
 use time::OffsetDateTime;
+use tokio::fs::{self, File};
 
 pub struct PartitionWriter {
     partition_path: String,
@@ -36,22 +35,18 @@ impl PartitionWriter {
 
         let path = std::path::Path::new(table_name).join(&self.partition_path);
         if !path.exists() {
-            std::fs::create_dir_all(&path)?;
+            fs::create_dir_all(&path).await?;
         }
-        let mut file =
-            File::create(path.join(format!("{}.parquet", ThreadRng::default().gen::<u32>())))?;
+        let file =
+            File::create(path.join(format!("{}.parquet", ThreadRng::default().gen::<u32>())))
+                .await?;
 
-        let mut buffer = vec![];
-        let mut writer = AsyncArrowWriter::try_new(&mut buffer, schema, None)?;
+        let mut writer = AsyncArrowWriter::try_new(file, schema, None)?;
         for rb in record_batchs {
-            if rb.num_rows() == 0 {
-                continue;
-            }
             writer.write(rb).await?;
         }
         writer.close().await?;
 
-        file.write_all(buffer.as_slice())?;
         Ok(())
     }
 }
