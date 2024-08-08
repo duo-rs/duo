@@ -16,8 +16,8 @@ use crate::MemoryStore;
 
 pub mod deser;
 mod logs;
-mod services;
 pub mod serialize;
+mod services;
 mod trace;
 
 // Frontend HTML page.

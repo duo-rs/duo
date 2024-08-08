@@ -6,9 +6,10 @@ use crate::partition::PartitionQuery;
 use crate::MemoryStore;
 
 use anyhow::{Ok, Result};
+use datafusion::arrow::array::RecordBatch;
 use datafusion::datasource::MemTable;
-use datafusion::prelude::Expr;
 use datafusion::prelude::SessionContext;
+use datafusion::prelude::{col, Expr};
 use parking_lot::RwLock;
 use serde::de::DeserializeOwned;
 use time::{Duration, OffsetDateTime};
@@ -20,6 +21,13 @@ pub struct QueryEngine {
 impl QueryEngine {
     pub fn new(memory_store: Arc<RwLock<MemoryStore>>) -> Self {
         Self { memory_store }
+    }
+
+    pub fn aggregate_span_names(self, expr: Expr) -> AggregateQuery {
+        AggregateQuery {
+            raw_query: self.query_span(expr),
+            group_expr: vec![col("name")],
+        }
     }
 
     pub fn query_span(&self, expr: Expr) -> Query {
@@ -72,6 +80,11 @@ pub struct Query {
     end: Option<OffsetDateTime>,
 }
 
+pub struct AggregateQuery {
+    raw_query: Query,
+    group_expr: Vec<Expr>,
+}
+
 impl Query {
     pub fn range(self, start: Option<OffsetDateTime>, end: Option<OffsetDateTime>) -> Self {
         Self { start, end, ..self }
@@ -106,5 +119,45 @@ impl Query {
         }
 
         Ok(serialize_record_batches::<T>(&total_batches).unwrap_or_default())
+    }
+}
+
+impl AggregateQuery {
+    pub async fn collect(self) -> Result<Vec<RecordBatch>> {
+        let mut total_batches;
+
+        let Query {
+            table_name,
+            expr,
+            memtable,
+            start,
+            end,
+        } = self.raw_query;
+
+        if let Some(memtable) = memtable {
+            let ctx = SessionContext::new();
+            let df = ctx.read_table(Arc::new(memtable))?;
+            total_batches = df
+                .filter(expr.clone())?
+                .aggregate(self.group_expr.clone(), vec![])?
+                .collect()
+                .await?;
+        } else {
+            return Ok(vec![]);
+        }
+
+        // Don't query data from storage in memory mode
+        if !crate::is_memory_mode() {
+            let pq = PartitionQuery::new(
+                ".".into(),
+                start.unwrap_or_else(|| OffsetDateTime::now_utc() - Duration::minutes(15)),
+                end.unwrap_or(OffsetDateTime::now_utc()),
+            );
+            let df = pq.df(table_name, expr).await?;
+            let batches = df.aggregate(self.group_expr, vec![])?.collect().await?;
+            tracing::debug!("aggregate from parquet: {}", batches.len());
+            total_batches.extend(batches);
+        }
+        Ok(total_batches)
     }
 }

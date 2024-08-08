@@ -8,7 +8,7 @@ use datafusion::{
         listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
         TableProvider,
     },
-    prelude::{Expr, SessionContext},
+    prelude::{DataFrame, Expr, SessionContext},
 };
 use time::{Duration, OffsetDateTime};
 
@@ -63,9 +63,16 @@ impl PartitionQuery {
         Ok(Arc::new(ListingTable::try_new(listing_table_config)?))
     }
 
+    pub async fn df(&self, table_name: &str, expr: Expr) -> Result<DataFrame> {
+        Ok(self
+            .ctx
+            .read_table(self.get_table(table_name).await?)?
+            .filter(expr)?)
+    }
+
     pub async fn query_table(&self, table_name: &str, expr: Expr) -> Result<Vec<RecordBatch>> {
-        let df = self.ctx.read_table(self.get_table(table_name).await?)?;
-        Ok(df.filter(expr)?.collect().await.unwrap_or_default())
+        let df = self.df(table_name, expr).await?;
+        Ok(df.collect().await.unwrap_or_default())
     }
 }
 

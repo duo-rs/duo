@@ -1,11 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    fmt::Debug,
-    fs::File,
-    io::Write,
-    mem,
-    path::Path,
-};
+use std::{collections::HashMap, fmt::Debug, fs::File, io::Write, mem, path::Path};
 
 use crate::arrow::{convert_log_to_record_batch, convert_span_to_record_batch};
 use crate::{Log, Process, Span};
@@ -86,20 +79,6 @@ impl MemoryStore {
 
     pub(super) fn service_names(&self) -> Vec<String> {
         self.services.keys().cloned().collect()
-    }
-
-    pub(super) fn span_names(&self, service: &str) -> HashSet<String> {
-        // self.spans()
-        //     .iter()
-        //     .filter_map(|span| {
-        //         if span.process_id.starts_with(service) {
-        //             Some(span.name.clone())
-        //         } else {
-        //             None
-        //         }
-        //     })
-        //     .collect()
-        HashSet::new()
     }
 
     /// Register new process and return the process id.

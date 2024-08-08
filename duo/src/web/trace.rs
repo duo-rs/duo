@@ -11,7 +11,7 @@ use time::{Duration, OffsetDateTime};
 use crate::{MemoryStore, TraceExt};
 
 use super::deser;
-use super::services::{filter_traces, get_trace_by_id};
+use super::services::{aggregate_span_names, filter_traces, get_trace_by_id};
 use super::JaegerData;
 
 #[derive(Debug, Deserialize)]
@@ -53,8 +53,9 @@ pub(super) async fn operations(
     Path(service): Path<String>,
     Extension(memory_store): Extension<Arc<RwLock<MemoryStore>>>,
 ) -> impl IntoResponse {
-    let memory_store = memory_store.read();
-    Json(JaegerData(memory_store.span_names(&service)))
+    Json(JaegerData(
+        aggregate_span_names(memory_store, &service).await,
+    ))
 }
 
 #[tracing::instrument]
