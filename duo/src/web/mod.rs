@@ -16,7 +16,7 @@ use crate::MemoryStore;
 
 pub mod deser;
 mod logs;
-mod query;
+mod services;
 pub mod serialize;
 mod trace;
 

@@ -6,15 +6,13 @@ use crate::partition::PartitionQuery;
 use crate::MemoryStore;
 
 use anyhow::{Ok, Result};
-use arrow_schema::SchemaRef;
 use datafusion::datasource::MemTable;
+use datafusion::prelude::Expr;
 use datafusion::prelude::SessionContext;
-use datafusion::{arrow::array::RecordBatch, prelude::Expr};
 use parking_lot::RwLock;
 use serde::de::DeserializeOwned;
 use time::{Duration, OffsetDateTime};
 
-#[derive(Debug, Clone)]
 pub struct QueryEngine {
     memory_store: Arc<RwLock<MemoryStore>>,
 }
@@ -24,11 +22,19 @@ impl QueryEngine {
         Self { memory_store }
     }
 
-    pub fn query_trace(&self, expr: Expr) -> Query {
+    pub fn query_span(&self, expr: Expr) -> Query {
+        let guard = self.memory_store.read();
+        let memtable: Option<MemTable> = if guard.span_batches.is_empty() {
+            None
+        } else {
+            Some(
+                MemTable::try_new(schema_span(), vec![guard.span_batches.clone()])
+                    .expect("Create Memtable failed"),
+            )
+        };
         Query {
             table_name: "span",
-            batches: self.memory_store.read().span_batches.clone(),
-            schema: schema_span(),
+            memtable,
             expr,
             start: None,
             end: None,
@@ -37,10 +43,20 @@ impl QueryEngine {
 
     pub fn query_log(&self, expr: Expr) -> Query {
         let guard = self.memory_store.read();
+        let memtable = if guard.log_batches.is_empty() {
+            None
+        } else {
+            Some(
+                MemTable::try_new(
+                    Arc::new(guard.log_schema.clone()),
+                    vec![guard.log_batches.clone()],
+                )
+                .expect("Create Memtable failed"),
+            )
+        };
         Query {
             table_name: "log",
-            batches: guard.log_batches.clone(),
-            schema: Arc::new(guard.log_schema.clone()),
+            memtable,
             expr,
             start: None,
             end: None,
@@ -50,9 +66,8 @@ impl QueryEngine {
 
 pub struct Query {
     table_name: &'static str,
-    batches: Vec<RecordBatch>,
-    schema: SchemaRef,
     expr: Expr,
+    memtable: Option<MemTable>,
     start: Option<OffsetDateTime>,
     end: Option<OffsetDateTime>,
 }
@@ -63,16 +78,15 @@ impl Query {
     }
 
     pub async fn collect<T: DeserializeOwned>(self) -> Result<Vec<T>> {
-        let mut total_batches = if self.batches.is_empty() {
-            vec![]
-        } else {
+        let mut total_batches;
+
+        if let Some(memtable) = self.memtable {
             let ctx = SessionContext::new();
-            let df = ctx.read_table(Arc::new(MemTable::try_new(
-                self.schema,
-                vec![self.batches.clone()],
-            )?))?;
-            df.filter(self.expr.clone())?.collect().await?
-        };
+            let df = ctx.read_table(Arc::new(memtable))?;
+            total_batches = df.filter(self.expr.clone())?.collect().await?;
+        } else {
+            return Ok(vec![]);
+        }
 
         // Don't query data from storage in memory mode
         // TODO: make query parallel

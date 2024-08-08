@@ -11,7 +11,7 @@ use time::{Duration, OffsetDateTime};
 use crate::{MemoryStore, TraceExt};
 
 use super::deser;
-use super::query::{filter_traces, get_trace_by_id};
+use super::services::{filter_traces, get_trace_by_id};
 use super::JaegerData;
 
 #[derive(Debug, Deserialize)]

@@ -23,7 +23,7 @@ pub(super) async fn filter_traces(
     let processes = { memory_store.read().processes() };
     let query_engine = QueryEngine::new(memory_store);
     let total_spans = query_engine
-        .query_trace(expr.clone())
+        .query_span(expr.clone())
         .collect::<Span>()
         .await
         .unwrap_or_default();
@@ -98,7 +98,7 @@ pub(super) async fn get_trace_by_id(
     let processes = { memory_store.read().processes() };
     let query_engine = QueryEngine::new(memory_store);
     let trace_spans = query_engine
-        .query_trace(expr.clone())
+        .query_span(expr.clone())
         .collect::<Span>()
         .await
         .unwrap_or_default();
@@ -124,4 +124,12 @@ pub(super) async fn get_trace_by_id(
             processes,
         })
     }
+}
+
+pub(super) async fn aggregate_service_names(
+    memory_store: Arc<RwLock<MemoryStore>>,
+    service: &str,
+) -> Vec<String> {
+    
+    todo!()
 }
