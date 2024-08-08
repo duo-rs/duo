@@ -13,6 +13,7 @@ pub struct MemoryStore {
     pub log_schema: Schema,
     pub span_batches: Vec<RecordBatch>,
     pub log_batches: Vec<RecordBatch>,
+    pub is_dirty: bool,
 }
 
 impl Debug for MemoryStore {
@@ -36,6 +37,7 @@ impl MemoryStore {
             log_schema: Schema::empty(),
             span_batches: vec![],
             log_batches: vec![],
+            is_dirty: false,
         }
     }
 
@@ -110,13 +112,14 @@ impl MemoryStore {
             (*schema).clone(),
         ])
         .unwrap();
-        // tracing::debug!(schema =?self.log_schema, "merge log schema");
         self.log_batches.push(batches);
+        self.is_dirty = true;
     }
 
     pub fn merge_spans(&mut self, spans: Vec<Span>) {
         self.span_batches
             .push(convert_span_to_record_batch(spans).unwrap());
+        self.is_dirty = true;
     }
 
     fn write_process<P: AsRef<Path>>(&self, path: P) -> Result<()> {

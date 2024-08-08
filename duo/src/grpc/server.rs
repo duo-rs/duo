@@ -65,6 +65,10 @@ impl DuoServer {
                     memory_store.is_locked_exclusive()
                 );
                 let guard = memory_store.read();
+                if !guard.is_dirty {
+                    continue;
+                }
+
                 if !guard.span_batches.is_empty() {
                     let mut span_writer =
                         FileWriter::try_new(File::create("span.arrow").unwrap(), &schema_span())
@@ -84,6 +88,8 @@ impl DuoServer {
                     }
                     log_writer.finish().unwrap();
                 }
+                drop(guard);
+                memory_store.write().is_dirty = false;
             }
         });
 
