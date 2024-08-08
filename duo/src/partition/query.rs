@@ -1,8 +1,8 @@
 use std::{path::PathBuf, sync::Arc};
 
 use anyhow::Result;
-use datafusion::arrow::json::ArrayWriter;
 use datafusion::{
+    arrow::array::RecordBatch,
     datasource::{
         file_format::parquet::ParquetFormat,
         listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
@@ -10,13 +10,11 @@ use datafusion::{
     },
     prelude::{Expr, SessionContext},
 };
-use serde::de::DeserializeOwned;
 use time::{Duration, OffsetDateTime};
 
-use crate::{arrow::schema_span, utils::TimePeriod, Log, Span};
+use crate::{arrow::schema_span, utils::TimePeriod};
 
 static TABLE_SPAN: &str = "span";
-static TABLE_LOG: &str = "log";
 
 pub struct PartitionQuery {
     ctx: SessionContext,
@@ -50,7 +48,7 @@ impl PartitionQuery {
             .collect()
     }
 
-    pub async fn get_table(&self, table_name: &str) -> Result<Arc<dyn TableProvider>> {
+    async fn get_table(&self, table_name: &str) -> Result<Arc<dyn TableProvider>> {
         let listing_options =
             ListingOptions::new(Arc::new(ParquetFormat::default().with_enable_pruning(true)))
                 .with_file_extension(".parquet");
@@ -65,36 +63,9 @@ impl PartitionQuery {
         Ok(Arc::new(ListingTable::try_new(listing_table_config)?))
     }
 
-    async fn query_table<T: DeserializeOwned>(
-        &self,
-        table_name: &str,
-        expr: Expr,
-    ) -> Result<impl IntoIterator<Item = T>> {
+    pub async fn query_table(&self, table_name: &str, expr: Expr) -> Result<Vec<RecordBatch>> {
         let df = self.ctx.read_table(self.get_table(table_name).await?)?;
-        let batch = df.filter(expr)?.collect().await.unwrap_or_default();
-        let buf = Vec::new();
-        let mut writer = ArrayWriter::new(buf);
-        writer.write_batches(&batch.iter().collect::<Vec<_>>())?;
-        writer.finish()?;
-        let json_values = writer.into_inner();
-        let json_rows: Vec<_> = serde_json::from_reader(json_values.as_slice()).unwrap_or_default();
-        Ok(json_rows)
-    }
-
-    pub async fn query_span(&self, expr: Expr) -> Result<Vec<Span>> {
-        Ok(self
-            .query_table(TABLE_SPAN, expr)
-            .await?
-            .into_iter()
-            .collect())
-    }
-
-    pub async fn query_log(&self, expr: Expr) -> Result<Vec<Log>> {
-        Ok(self
-            .query_table(TABLE_LOG, expr)
-            .await?
-            .into_iter()
-            .collect())
+        Ok(df.filter(expr)?.collect().await.unwrap_or_default())
     }
 }
 
@@ -113,7 +84,7 @@ mod tests {
             OffsetDateTime::parse("2023-06-04T14:46:00+00:00", &Rfc3339).unwrap(),
         );
         let v = query
-            .query_span(col("trace_id").eq(lit("15427617998887099000")))
+            .query_table("span", col("trace_id").eq(lit("15427617998887099000")))
             .await
             .unwrap();
         assert!(v.len() == 8);

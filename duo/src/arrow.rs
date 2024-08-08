@@ -1,4 +1,7 @@
-use datafusion::arrow::json::{reader::infer_json_schema_from_iterator, ReaderBuilder};
+use datafusion::arrow::json::{
+    reader::infer_json_schema_from_iterator, ArrayWriter, ReaderBuilder,
+};
+use serde::de::DeserializeOwned;
 use serde_json::{Map, Value as JsonValue};
 use std::sync::Arc;
 
@@ -83,4 +86,18 @@ pub fn convert_log_to_record_batch(logs: Vec<Log>) -> Result<RecordBatch> {
     decoder.serialize(&data)?;
     let batch = decoder.flush()?.expect("Empty record batch");
     Ok(batch)
+}
+
+pub fn serialize_record_batches<T: DeserializeOwned>(batch: &[RecordBatch]) -> Result<Vec<T>> {
+    if batch.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let buf = Vec::new();
+    let mut writer = ArrayWriter::new(buf);
+    writer.write_batches(&batch.iter().collect::<Vec<_>>())?;
+    writer.finish()?;
+    let json_values = writer.into_inner();
+    let json_rows: Vec<_> = serde_json::from_reader(json_values.as_slice()).unwrap_or_default();
+    Ok(json_rows)
 }

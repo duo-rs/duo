@@ -22,6 +22,7 @@ mod grpc;
 mod memory;
 mod models;
 mod partition;
+mod query;
 mod utils;
 mod web;
 

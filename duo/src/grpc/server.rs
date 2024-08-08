@@ -101,14 +101,16 @@ impl DuoServer {
                     memory_store.is_locked(),
                     memory_store.is_locked_exclusive()
                 );
-                let mut guard = memory_store.write();
-                println!("guard lock acquired");
 
                 // clear the previous log schema
-                guard.log_schema = Schema::empty();
-                let span_batches = mem::take(&mut guard.span_batches);
-                let log_batches = mem::take(&mut guard.log_batches);
-                drop(guard);
+                let (span_batches, log_batches) = {
+                    let mut guard = memory_store.write();
+                    guard.log_schema = Schema::empty();
+                    (
+                        mem::take(&mut guard.span_batches),
+                        mem::take(&mut guard.log_batches),
+                    )
+                };
 
                 if !span_batches.is_empty() {
                     pw.write_partition("span", &span_batches).await.unwrap();

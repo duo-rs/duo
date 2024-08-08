@@ -5,20 +5,14 @@ use std::{
     io::Write,
     mem,
     path::Path,
-    sync::Arc,
 };
 
 use crate::arrow::{convert_log_to_record_batch, convert_span_to_record_batch};
-use crate::{arrow::schema_span, Log, Process, Span};
+use crate::{Log, Process, Span};
 use anyhow::Result;
 use arrow_schema::Schema;
-use datafusion::{
-    arrow::{array::RecordBatch, json::ArrayWriter},
-    datasource::MemTable,
-    prelude::{Expr, SessionContext},
-};
+use datafusion::arrow::array::RecordBatch;
 use duo_api as proto;
-use serde::de::DeserializeOwned;
 
 pub struct MemoryStore {
     // Collection of services.
@@ -76,33 +70,6 @@ impl MemoryStore {
         let mut store = Self::new();
         store.services = services;
         Ok(store)
-    }
-
-    pub async fn query_span(&self, expr: Expr) -> Result<Vec<Span>> {
-        if self.span_batches.is_empty() {
-            return Ok(vec![]);
-        }
-
-        let ctx = SessionContext::new();
-        let df = ctx.read_table(Arc::new(MemTable::try_new(
-            schema_span(),
-            vec![self.span_batches.clone()],
-        )?))?;
-        let batches = df.filter(expr)?.collect().await?;
-        serialize_record_batche(&batches)
-    }
-
-    pub async fn query_log(&self, expr: Expr) -> Result<Vec<Log>> {
-        if self.log_batches.is_empty() {
-            return Ok(vec![]);
-        }
-        let ctx = SessionContext::new();
-        let df = ctx.read_table(Arc::new(MemTable::try_new(
-            Arc::new(self.log_schema.clone()),
-            vec![self.log_batches.clone()],
-        )?))?;
-        let batches = df.filter(expr)?.collect().await?;
-        serialize_record_batche(&batches)
     }
 
     pub(super) fn processes(&self) -> HashMap<String, Process> {
@@ -180,18 +147,4 @@ impl MemoryStore {
         )?;
         Ok(())
     }
-}
-
-fn serialize_record_batche<T: DeserializeOwned>(batch: &[RecordBatch]) -> Result<Vec<T>> {
-    if batch.is_empty() {
-        return Ok(vec![]);
-    }
-
-    let buf = Vec::new();
-    let mut writer = ArrayWriter::new(buf);
-    writer.write_batches(&batch.iter().collect::<Vec<_>>())?;
-    writer.finish()?;
-    let json_values = writer.into_inner();
-    let json_rows: Vec<_> = serde_json::from_reader(json_values.as_slice()).unwrap_or_default();
-    Ok(json_rows)
 }

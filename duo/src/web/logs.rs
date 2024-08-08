@@ -8,8 +8,8 @@ use parking_lot::RwLock;
 use serde::Deserialize;
 use time::{Duration, OffsetDateTime};
 
-use crate::partition::PartitionQuery;
-use crate::MemoryStore;
+use crate::query::QueryEngine;
+use crate::{Log, MemoryStore};
 
 use super::deser;
 
@@ -33,22 +33,17 @@ pub(super) async fn list(
 ) -> impl IntoResponse {
     let process_prefix = p.service;
     let limit = p.limit.unwrap_or(DEFAUT_LOG_LIMIT);
-    let mut total_logs = vec![];
-    let pq = if crate::is_memory_mode() || total_logs.len() >= limit {
-        None
-    } else {
-        Some(PartitionQuery::new(
-            ".".into(),
+    let query_engine = QueryEngine::new(memory_store);
+    let expr = col("process_id").like(lit(format!("{process_prefix}%")));
+    let total_logs = query_engine
+        .query_log(expr)
+        .range(
             p.start
-                .unwrap_or_else(|| OffsetDateTime::now_utc() - Duration::minutes(15)),
-            p.end.unwrap_or(OffsetDateTime::now_utc()),
-        ))
-    };
-
-    if let Some(pq) = pq {
-        let expr = col("process_id").like(lit(format!("{process_prefix}%")));
-        let logs = pq.query_log(expr).await.unwrap_or_default();
-        total_logs.extend(logs);
-    }
+                .or_else(|| Some(OffsetDateTime::now_utc() - Duration::minutes(15))),
+            p.end,
+        )
+        .collect::<Log>()
+        .await
+        .unwrap_or_default();
     Json(total_logs.into_iter().take(limit).collect::<Vec<_>>())
 }

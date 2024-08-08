@@ -1,11 +1,9 @@
-use crate::partition::PartitionQuery;
-use crate::{MemoryStore, Span, TraceExt};
+use crate::query::QueryEngine;
+use crate::{Log, MemoryStore, Span, TraceExt};
 use datafusion::prelude::*;
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
-use time::{Duration, OffsetDateTime};
-use tracing::debug;
 
 use super::trace::QueryParameters;
 
@@ -21,26 +19,14 @@ pub(super) async fn filter_traces(
     let mut traces = HashMap::<u64, Vec<Span>>::new();
 
     let expr = col("process_id").like(lit(format!("{process_prefix}%")));
-    let memory_store = memory_store.read();
-    let mut total_spans = memory_store.query_span(expr.clone()).await.unwrap();
 
-    // Don't query data from storage in memory mode
-    let pq = if crate::is_memory_mode() {
-        None
-    } else {
-        Some(PartitionQuery::new(
-            ".".into(),
-            p.start
-                .unwrap_or_else(|| OffsetDateTime::now_utc() - Duration::minutes(15)),
-            p.end.unwrap_or(OffsetDateTime::now_utc()),
-        ))
-    };
-
-    if let Some(pq) = pq.as_ref() {
-        let spans = pq.query_span(expr).await.unwrap_or_default();
-        debug!("spans from parquet: {}", spans.len());
-        total_spans.extend(spans);
-    }
+    let processes = { memory_store.read().processes() };
+    let query_engine = QueryEngine::new(memory_store);
+    let total_spans = query_engine
+        .query_trace(expr.clone())
+        .collect::<Span>()
+        .await
+        .unwrap_or_default();
 
     for span in total_spans {
         if traces.contains_key(&span.trace_id) {
@@ -79,19 +65,19 @@ pub(super) async fn filter_traces(
 
     let trace_ids = traces.keys().collect::<Vec<_>>();
 
-    // TODO: make query parallel
     let expr = col("trace_id").in_list(trace_ids.into_iter().map(|id| lit(*id)).collect(), false);
-    let mut trace_logs = memory_store.query_log(expr.clone()).await.unwrap();
-    if let Some(pq) = pq.as_ref() {
-        let logs = pq.query_log(expr).await.unwrap_or_default();
-        debug!("span logs from parquet: {}", logs.len());
-        trace_logs.extend(logs);
-    }
+    let trace_logs = query_engine
+        .query_log(expr.clone())
+        .collect::<Log>()
+        .await
+        .unwrap();
+
     traces
         .into_iter()
         .take(limit)
         .map(|(trace_id, spans)| TraceExt {
             trace_id,
+            processes: processes.clone(),
             spans: spans
                 .iter()
                 .map(|span| {
@@ -100,7 +86,6 @@ pub(super) async fn filter_traces(
                     span
                 })
                 .collect(),
-            processes: memory_store.processes(),
         })
         .collect()
 }
@@ -109,36 +94,23 @@ pub(super) async fn get_trace_by_id(
     memory_store: Arc<RwLock<MemoryStore>>,
     trace_id: u64,
 ) -> Option<TraceExt> {
-    // Don't query data from storage in memory mode
-    let pq = if crate::is_memory_mode() {
-        None
-    } else {
-        Some(PartitionQuery::recent_hours(".".into(), 12))
-    };
-
     let expr = col("trace_id").eq(lit(trace_id));
-    let memory_store = memory_store.read();
-    let mut trace_spans: Vec<Span> = memory_store
-        .query_span(expr.clone())
+    let processes = { memory_store.read().processes() };
+    let query_engine = QueryEngine::new(memory_store);
+    let trace_spans = query_engine
+        .query_trace(expr.clone())
+        .collect::<Span>()
         .await
         .unwrap_or_default();
-    if let Some(pq) = pq.as_ref() {
-        let spans = pq.query_span(expr.clone()).await.unwrap_or_default();
-        trace_spans.extend(spans);
-    }
 
     if trace_spans.is_empty() {
         None
     } else {
-        let mut trace_logs = memory_store
-            .query_log(expr.clone())
+        let trace_logs = query_engine
+            .query_log(expr)
+            .collect::<Log>()
             .await
             .unwrap_or_default();
-        if let Some(pq) = pq.as_ref() {
-            let logs = pq.query_log(expr).await.unwrap();
-            debug!("trace `{trace_id}` logs from parquet: {}", logs.len());
-            trace_logs.extend(logs);
-        }
         Some(TraceExt {
             trace_id,
             spans: trace_spans
@@ -149,7 +121,7 @@ pub(super) async fn get_trace_by_id(
                     span
                 })
                 .collect(),
-            processes: memory_store.processes(),
+            processes,
         })
     }
 }
