@@ -91,14 +91,11 @@ impl Query {
     }
 
     pub async fn collect<T: DeserializeOwned>(self) -> Result<Vec<T>> {
-        let mut total_batches;
-
+        let mut total_batches = vec![];
         if let Some(memtable) = self.memtable {
             let ctx = SessionContext::new();
             let df = ctx.read_table(Arc::new(memtable))?;
             total_batches = df.filter(self.expr.clone())?.collect().await?;
-        } else {
-            return Ok(vec![]);
         }
 
         // Don't query data from storage in memory mode
@@ -109,21 +106,21 @@ impl Query {
                     .unwrap_or_else(|| OffsetDateTime::now_utc() - Duration::minutes(15)),
                 self.end.unwrap_or(OffsetDateTime::now_utc()),
             );
-            let spans = pq
+            let batches = pq
                 .query_table(self.table_name, self.expr)
                 .await
                 .unwrap_or_default();
-            tracing::debug!("{} from parquet: {}", self.table_name, spans.len());
-            total_batches.extend(spans);
+            tracing::debug!("{} from parquet: {}", self.table_name, batches.len());
+            total_batches.extend(batches);
         }
 
-        Ok(serialize_record_batches::<T>(&total_batches).unwrap_or_default())
+        Ok(serialize_record_batches::<T>(&total_batches).unwrap())
     }
 }
 
 impl AggregateQuery {
     pub async fn collect(self) -> Result<Vec<RecordBatch>> {
-        let mut total_batches;
+        let mut total_batches = vec![];
 
         let Query {
             table_name,
@@ -141,8 +138,6 @@ impl AggregateQuery {
                 .aggregate(self.group_expr.clone(), vec![])?
                 .collect()
                 .await?;
-        } else {
-            return Ok(vec![]);
         }
 
         // Don't query data from storage in memory mode

@@ -1,6 +1,7 @@
 [package]
 name = "duo"
 version = "0.1.0"
+rust-version = "1.70.0"
 description = "Observability duet: Logging and Tracing"
 edition.workspace = true
 homepage.workspace = true

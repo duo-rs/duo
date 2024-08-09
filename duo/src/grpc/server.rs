@@ -120,13 +120,13 @@ impl DuoServer {
 
                 if !span_batches.is_empty() {
                     pw.write_partition("span", &span_batches).await.unwrap();
+                    println!("write partition done: span");
                 }
-                println!("write partition done: span");
 
                 if !log_batches.is_empty() {
                     pw.write_partition("log", &log_batches).await.unwrap();
+                    println!("write partition done: log");
                 }
-                println!("write partition done: log");
             }
         });
     }
