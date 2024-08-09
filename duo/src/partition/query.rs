@@ -1,4 +1,4 @@
-use std::{path::PathBuf, sync::Arc};
+use std::sync::Arc;
 
 use anyhow::Result;
 use datafusion::{
@@ -10,7 +10,9 @@ use datafusion::{
     },
     prelude::{DataFrame, Expr, SessionContext},
 };
+use object_store::local::LocalFileSystem;
 use time::{Duration, OffsetDateTime};
+use url::Url;
 
 use crate::{arrow::schema_span, utils::TimePeriod};
 
@@ -18,21 +20,24 @@ static TABLE_SPAN: &str = "span";
 
 pub struct PartitionQuery {
     ctx: SessionContext,
-    root_path: PathBuf,
     prefixes: Vec<String>,
 }
 
 impl PartitionQuery {
-    pub fn new(root_path: PathBuf, start: OffsetDateTime, end: OffsetDateTime) -> Self {
+    pub fn new(root_path: &str, start: OffsetDateTime, end: OffsetDateTime) -> Self {
         let ctx = SessionContext::new();
+        let url = Url::parse(&format!("file://{root_path}")).unwrap();
+        ctx.register_object_store(
+            &url,
+            Arc::new(LocalFileSystem::new_with_prefix(root_path).unwrap()),
+        );
         PartitionQuery {
             ctx,
-            root_path,
             prefixes: TimePeriod::new(start, end, 1).generate_prefixes(),
         }
     }
 
-    pub fn recent_hours(root_path: PathBuf, hours: i64) -> Self {
+    pub fn recent_hours(root_path: &str, hours: i64) -> Self {
         let now = OffsetDateTime::now_utc();
         let hours_ago = now - Duration::hours(hours);
         Self::new(root_path, hours_ago, now)
@@ -41,10 +46,7 @@ impl PartitionQuery {
     fn table_paths(&self, table_name: &str) -> Vec<ListingTableUrl> {
         self.prefixes
             .iter()
-            .filter_map(|prefix| {
-                let path = self.root_path.join(table_name).join(prefix);
-                ListingTableUrl::parse(path.to_str().unwrap()).ok()
-            })
+            .filter_map(|prefix| ListingTableUrl::parse(format!("{table_name}/{prefix}")).ok())
             .collect()
     }
 

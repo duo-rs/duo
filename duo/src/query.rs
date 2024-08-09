@@ -105,7 +105,7 @@ impl Query {
         // TODO: make query parallel
         if !crate::is_memory_mode() {
             let pq = PartitionQuery::new(
-                ".".into(),
+                ".",
                 self.start
                     .unwrap_or_else(|| OffsetDateTime::now_utc() - Duration::minutes(15)),
                 self.end.unwrap_or(OffsetDateTime::now_utc()),
@@ -149,7 +149,7 @@ impl AggregateQuery {
         // Don't query data from storage in memory mode
         if !crate::is_memory_mode() {
             let pq = PartitionQuery::new(
-                ".".into(),
+                ".",
                 start.unwrap_or_else(|| OffsetDateTime::now_utc() - Duration::minutes(15)),
                 end.unwrap_or(OffsetDateTime::now_utc()),
             );

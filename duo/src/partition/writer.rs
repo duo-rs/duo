@@ -1,11 +1,14 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 use datafusion::arrow::array::RecordBatch;
 use datafusion::parquet::arrow::AsyncArrowWriter;
+use object_store::{local::LocalFileSystem, path::Path, ObjectStore};
 use rand::{rngs::ThreadRng, Rng};
 use time::OffsetDateTime;
-use tokio::fs::{self, File};
 
 pub struct PartitionWriter {
+    object_store: Arc<dyn ObjectStore>,
     partition_path: String,
 }
 
@@ -13,6 +16,7 @@ impl PartitionWriter {
     pub fn with_minute() -> Self {
         let now = OffsetDateTime::now_utc();
         PartitionWriter {
+            object_store: Arc::new(LocalFileSystem::new_with_prefix(".").unwrap()),
             partition_path: format!(
                 "date={}/hour={:02}/minute={:02}",
                 now.date(),
@@ -33,19 +37,18 @@ impl PartitionWriter {
             return Ok(());
         };
 
-        let path = std::path::Path::new(table_name).join(&self.partition_path);
-        if !path.exists() {
-            fs::create_dir_all(&path).await?;
-        }
-        let file =
-            File::create(path.join(format!("{}.parquet", ThreadRng::default().gen::<u32>())))
-                .await?;
-
-        let mut writer = AsyncArrowWriter::try_new(file, schema, None)?;
+        let mut buffer = vec![];
+        let mut writer = AsyncArrowWriter::try_new(&mut buffer, schema, None)?;
         for rb in record_batchs {
             writer.write(rb).await?;
         }
         writer.close().await?;
+        let path = Path::from(format!(
+            "{table_name}/{}/{}.parquet",
+            self.partition_path,
+            ThreadRng::default().gen::<u32>()
+        ));
+        self.object_store.put(&path, buffer.into()).await?;
 
         Ok(())
     }
