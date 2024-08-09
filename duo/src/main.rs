@@ -5,6 +5,7 @@ use std::sync::{
 
 use anyhow::Result;
 use clap::Parser;
+use config::DuoConfig;
 use duo_subscriber::DuoLayer;
 use parking_lot::RwLock;
 use tracing::Level;
@@ -18,6 +19,7 @@ use tracing_subscriber::{
 
 mod aggregator;
 mod arrow;
+mod config;
 mod grpc;
 mod memory;
 mod models;
@@ -58,8 +60,11 @@ struct Args {
     /// This mode suit for local development.
     memory_mode: bool,
     /// Collect log and span of duo itself.
-    #[arg(short, long)]
+    #[arg(long)]
     collect_self: bool,
+    /// Configuration file path.
+    #[arg(short, long)]
+    config_file: Option<String>,
 }
 
 #[tokio::main]
@@ -70,10 +75,16 @@ async fn main() -> Result<()> {
         grpc_port,
         memory_mode,
         collect_self,
+        config_file,
     } = Args::parse();
     if memory_mode {
         MEMORY_MODE.store(memory_mode, Ordering::Relaxed);
         println!("Running Duo in memory mode, all data will be lost after the process exits");
+    }
+
+    if let Some(config_file) = config_file {
+        let config = DuoConfig::parse_from_toml(config_file)?;
+        config::set(config);
     }
 
     let memory_store = Arc::new(RwLock::new(MemoryStore::load(".")?));

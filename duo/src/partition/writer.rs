@@ -3,9 +3,11 @@ use std::sync::Arc;
 use anyhow::Result;
 use datafusion::arrow::array::RecordBatch;
 use datafusion::parquet::arrow::AsyncArrowWriter;
-use object_store::{local::LocalFileSystem, path::Path, ObjectStore};
+use object_store::{path::Path, ObjectStore};
 use rand::{rngs::ThreadRng, Rng};
 use time::OffsetDateTime;
+
+use crate::config;
 
 pub struct PartitionWriter {
     object_store: Arc<dyn ObjectStore>,
@@ -15,8 +17,9 @@ pub struct PartitionWriter {
 impl PartitionWriter {
     pub fn with_minute() -> Self {
         let now = OffsetDateTime::now_utc();
+        let config = config::load();
         PartitionWriter {
-            object_store: Arc::new(LocalFileSystem::new_with_prefix(".").unwrap()),
+            object_store: config.object_store(),
             partition_path: format!(
                 "date={}/hour={:02}/minute={:02}",
                 now.date(),

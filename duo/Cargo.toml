@@ -26,8 +26,9 @@ tracing-subscriber.workspace = true
 datafusion = "40"
 rust-embed = "8.5"
 mime_guess = "2"
-object_store = "0.10.2"
+object_store = { version = "0.10.2", features = ["aws"] }
 url = "2.5.2"
+toml = "0.8.19"
 
 [dev-dependencies]
 rstest = "0.16"

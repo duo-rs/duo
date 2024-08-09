@@ -10,11 +10,9 @@ use datafusion::{
     },
     prelude::{DataFrame, Expr, SessionContext},
 };
-use object_store::local::LocalFileSystem;
 use time::{Duration, OffsetDateTime};
-use url::Url;
 
-use crate::{arrow::schema_span, utils::TimePeriod};
+use crate::{arrow::schema_span, config, utils::TimePeriod};
 
 static TABLE_SPAN: &str = "span";
 
@@ -24,23 +22,20 @@ pub struct PartitionQuery {
 }
 
 impl PartitionQuery {
-    pub fn new(root_path: &str, start: OffsetDateTime, end: OffsetDateTime) -> Self {
+    pub fn new(start: OffsetDateTime, end: OffsetDateTime) -> Self {
         let ctx = SessionContext::new();
-        let url = Url::parse(&format!("file://{root_path}")).unwrap();
-        ctx.register_object_store(
-            &url,
-            Arc::new(LocalFileSystem::new_with_prefix(root_path).unwrap()),
-        );
+        let config = config::load();
+        ctx.register_object_store(&config.object_store_url(), config.object_store());
         PartitionQuery {
             ctx,
             prefixes: TimePeriod::new(start, end, 1).generate_prefixes(),
         }
     }
 
-    pub fn recent_hours(root_path: &str, hours: i64) -> Self {
+    pub fn recent_hours(hours: i64) -> Self {
         let now = OffsetDateTime::now_utc();
         let hours_ago = now - Duration::hours(hours);
-        Self::new(root_path, hours_ago, now)
+        Self::new(hours_ago, now)
     }
 
     fn table_paths(&self, table_name: &str) -> Vec<ListingTableUrl> {
@@ -88,7 +83,6 @@ mod tests {
     #[tokio::test]
     async fn test_query() {
         let query = PartitionQuery::new(
-            ".".into(),
             OffsetDateTime::parse("2023-06-04T14:45:00+00:00", &Rfc3339).unwrap(),
             OffsetDateTime::parse("2023-06-04T14:46:00+00:00", &Rfc3339).unwrap(),
         );
