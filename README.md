@@ -92,7 +92,7 @@ Run your application then check the http://127.0.0.1:3000 to see the tracing dat
 
 - [x] Batch sync WAL to parquet files.
 
-- [ ] Support Object Store.
+- [x] Support Object Store.
 
 - [ ] Support OpenTelemetry specification, aimed to be a lightweight OpenTelemetry backend.
 
