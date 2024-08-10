@@ -160,8 +160,14 @@ impl<'a> Serialize for JaegerLog<'a> {
     {
         let mut map = serializer.serialize_map(Some(2))?;
         map.serialize_entry("timestamp", &self.0.as_micros())?;
-        let fields: Vec<_> = self.0.fields.iter().map(JaegerField).collect();
-        map.serialize_entry("fields", &fields)?;
+        let mut fields = HashMap::new();
+        fields.insert("message".into(), self.0.message.clone().into());
+        fields.insert("level".into(), self.0.level.as_str().into());
+        fields.extend(self.0.fields.clone());
+        map.serialize_entry(
+            "fields",
+            &fields.iter().map(JaegerField).collect::<Vec<_>>(),
+        )?;
         map.end()
     }
 }

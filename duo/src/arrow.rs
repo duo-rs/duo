@@ -23,6 +23,17 @@ pub fn schema_span() -> SchemaRef {
     ]))
 }
 
+pub fn schema_log() -> SchemaRef {
+    Arc::new(Schema::new(vec![
+        Field::new("process_id", DataType::Utf8, false),
+        Field::new("time", DataType::Int64, false),
+        Field::new("trace_id", DataType::UInt64, true),
+        Field::new("span_id", DataType::UInt64, true),
+        Field::new("level", DataType::Utf8, false),
+        Field::new("message", DataType::Utf8, true),
+    ]))
+}
+
 pub fn convert_span_to_record_batch(spans: Vec<Span>) -> Result<RecordBatch> {
     let mut span_ids = Vec::<u64>::new();
     let mut parent_ids = Vec::<Option<u64>>::new();
@@ -67,6 +78,7 @@ pub fn convert_span_to_record_batch(spans: Vec<Span>) -> Result<RecordBatch> {
 
 pub fn convert_log_to_record_batch(logs: Vec<Log>) -> Result<RecordBatch> {
     let mut data = vec![];
+    let mut fields = vec![];
     for log in logs {
         let mut map = Map::new();
         let time = log.as_micros();
@@ -75,14 +87,22 @@ pub fn convert_log_to_record_batch(logs: Vec<Log>) -> Result<RecordBatch> {
         map.insert("trace_id".into(), log.trace_id.into());
         map.insert("level".into(), log.level.as_str().into());
         map.insert("time".into(), time.into());
+        map.insert("message".into(), log.message.into());
+        let mut field_map = Map::new();
         for (key, value) in log.fields {
-            map.insert(key, value);
+            field_map.insert(key.clone(), value.clone());
+        }
+
+        if !field_map.is_empty() {
+            fields.push(JsonValue::Object(field_map.clone()));
+            map.extend(field_map);
         }
         data.push(JsonValue::Object(map));
     }
 
-    let inferred_schema = infer_json_schema_from_iterator(data.iter().map(Ok))?;
-    let mut decoder = ReaderBuilder::new(Arc::new(inferred_schema)).build_decoder()?;
+    let inferred_field_schema = infer_json_schema_from_iterator(fields.iter().map(Ok))?;
+    let schema = Schema::try_merge(vec![(*schema_log()).clone(), inferred_field_schema]).unwrap();
+    let mut decoder = ReaderBuilder::new(Arc::new(schema)).build_decoder()?;
     decoder.serialize(&data)?;
     let batch = decoder.flush()?.expect("Empty record batch");
     Ok(batch)

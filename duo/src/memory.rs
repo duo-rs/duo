@@ -1,6 +1,7 @@
+use std::sync::Arc;
 use std::{collections::HashMap, fmt::Debug, fs::File, io::Write, mem, path::Path};
 
-use crate::arrow::{convert_log_to_record_batch, convert_span_to_record_batch};
+use crate::arrow::{convert_log_to_record_batch, convert_span_to_record_batch, schema_log};
 use crate::{Log, Process, Span};
 use anyhow::Result;
 use arrow_schema::Schema;
@@ -10,7 +11,7 @@ use duo_api as proto;
 pub struct MemoryStore {
     // Collection of services.
     services: HashMap<String, Vec<Process>>,
-    pub log_schema: Schema,
+    pub log_schema: Arc<Schema>,
     pub span_batches: Vec<RecordBatch>,
     pub log_batches: Vec<RecordBatch>,
     pub is_dirty: bool,
@@ -34,7 +35,7 @@ impl MemoryStore {
     pub fn new() -> Self {
         MemoryStore {
             services: HashMap::new(),
-            log_schema: Schema::empty(),
+            log_schema: schema_log(),
             span_batches: vec![],
             log_batches: vec![],
             is_dirty: false,
@@ -65,6 +66,14 @@ impl MemoryStore {
         let mut store = Self::new();
         store.services = services;
         Ok(store)
+    }
+
+    pub(super) fn reset(&mut self) -> (Vec<RecordBatch>, Vec<RecordBatch>) {
+        self.log_schema = schema_log();
+        (
+            mem::take(&mut self.span_batches),
+            mem::take(&mut self.log_batches),
+        )
     }
 
     pub(super) fn processes(&self) -> HashMap<String, Process> {
@@ -107,11 +116,9 @@ impl MemoryStore {
         let batches = convert_log_to_record_batch(logs).unwrap();
 
         let schema = batches.schema();
-        self.log_schema = Schema::try_merge(vec![
-            mem::replace(&mut self.log_schema, Schema::empty()),
-            (*schema).clone(),
-        ])
-        .unwrap();
+        self.log_schema = Arc::new(
+            Schema::try_merge(vec![(*self.log_schema).clone(), (*schema).clone()]).unwrap(),
+        );
         self.log_batches.push(batches);
         self.is_dirty = true;
     }

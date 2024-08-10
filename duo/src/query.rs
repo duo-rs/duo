@@ -56,7 +56,7 @@ impl QueryEngine {
         } else {
             Some(
                 MemTable::try_new(
-                    Arc::new(guard.log_schema.clone()),
+                    Arc::clone(&guard.log_schema),
                     vec![guard.log_batches.clone()],
                 )
                 .expect("Create Memtable failed"),
@@ -106,10 +106,7 @@ impl Query {
                     .unwrap_or_else(|| OffsetDateTime::now_utc() - Duration::minutes(15)),
                 self.end.unwrap_or(OffsetDateTime::now_utc()),
             );
-            let batches = pq
-                .query_table(self.table_name, self.expr)
-                .await
-                .unwrap_or_default();
+            let batches = pq.query_table(self.table_name, self.expr).await.unwrap();
             tracing::debug!("{} from parquet: {}", self.table_name, batches.len());
             total_batches.extend(batches);
         }

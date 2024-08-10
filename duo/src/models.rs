@@ -43,6 +43,7 @@ pub struct Log {
     pub level: Level,
     #[serde(with = "deser::miscrosecond")]
     pub time: OffsetDateTime,
+    pub message: String,
     #[serde(flatten)]
     pub fields: HashMap<String, JsonValue>,
 }
@@ -142,16 +143,21 @@ impl From<&proto::Span> for Span {
 }
 
 impl From<proto::Log> for Log {
-    fn from(log: proto::Log) -> Self {
+    fn from(mut log: proto::Log) -> Self {
         let level = proto::Level::try_from(log.level)
             .map(tracing::Level::from)
             .unwrap_or(tracing::Level::DEBUG);
 
+        let message = log
+            .fields
+            .remove("message")
+            .map(|v| v.to_string())
+            .unwrap_or_default();
         let fields = log
             .fields
             .into_iter()
             .map(|(key, value)| (key, value.into()))
-            .collect();
+            .collect::<HashMap<_, _>>();
         Log {
             process_id: log.process_id,
             span_id: log.span_id,
@@ -165,6 +171,7 @@ impl From<proto::Log> for Log {
                         .map(OffsetDateTime::from)
                 })
                 .unwrap_or_else(OffsetDateTime::now_utc),
+            message,
             fields,
         }
     }

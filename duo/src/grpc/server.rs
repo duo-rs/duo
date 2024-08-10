@@ -1,7 +1,6 @@
 use std::{fs::File, mem, sync::Arc, time::Duration};
 
 use crate::{arrow::schema_span, partition::PartitionWriter, Log, MemoryStore, SpanAggregator};
-use arrow_schema::Schema;
 use datafusion::arrow::ipc::writer::FileWriter;
 use duo_api::instrument::{
     instrument_server::Instrument, RecordEventRequest, RecordEventResponse, RecordSpanRequest,
@@ -109,14 +108,7 @@ impl DuoServer {
                 );
 
                 // clear the previous log schema
-                let (span_batches, log_batches) = {
-                    let mut guard = memory_store.write();
-                    guard.log_schema = Schema::empty();
-                    (
-                        mem::take(&mut guard.span_batches),
-                        mem::take(&mut guard.log_batches),
-                    )
-                };
+                let (span_batches, log_batches) = { memory_store.write().reset() };
 
                 if !span_batches.is_empty() {
                     pw.write_partition("span", &span_batches).await.unwrap();
