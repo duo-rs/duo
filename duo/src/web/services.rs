@@ -25,6 +25,7 @@ pub(super) async fn filter_traces(
     let query_engine = QueryEngine::new(memory_store);
     let total_spans = query_engine
         .query_span(expr.clone())
+        .range(p.start, p.end)
         .collect::<Span>()
         .await
         .unwrap_or_default();
@@ -69,9 +70,10 @@ pub(super) async fn filter_traces(
     let expr = col("trace_id").in_list(trace_ids.into_iter().map(|id| lit(*id)).collect(), false);
     let trace_logs = query_engine
         .query_log(expr.clone())
+        .range(p.start, p.end)
         .collect::<Log>()
         .await
-        .unwrap();
+        .unwrap_or_default();
 
     traces
         .into_iter()
