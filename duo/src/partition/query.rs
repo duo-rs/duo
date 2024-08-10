@@ -13,7 +13,7 @@ use datafusion::{
 use time::{Duration, OffsetDateTime};
 
 use crate::{
-    arrow::{schema_log, schema_span},
+    arrow::{LOG_SCHEMA, SPAN_SCHEMA},
     config,
     utils::TimePeriod,
 };
@@ -57,10 +57,10 @@ impl PartitionQuery {
             ListingTableConfig::new_with_multi_paths(self.table_paths(table_name))
                 .with_listing_options(listing_options);
         if table_name == TABLE_SPAN {
-            listing_table_config = listing_table_config.with_schema(schema_span());
+            listing_table_config = listing_table_config.with_schema(Arc::clone(&*SPAN_SCHEMA));
         } else {
             // FIXME: log dynamic fields schema
-            listing_table_config = listing_table_config.with_schema(schema_log());
+            listing_table_config = listing_table_config.with_schema(Arc::clone(&*LOG_SCHEMA));
             // listing_table_config = listing_table_config.infer_schema(&self.ctx.state()).await?;
             // println!("listing schema: {:?}", listing_table_config.file_schema);
         }

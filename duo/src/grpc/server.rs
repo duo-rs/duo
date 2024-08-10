@@ -1,6 +1,6 @@
 use std::{fs::File, mem, sync::Arc, time::Duration};
 
-use crate::{arrow::schema_span, partition::PartitionWriter, Log, MemoryStore, SpanAggregator};
+use crate::{arrow::SPAN_SCHEMA, partition::PartitionWriter, Log, MemoryStore, SpanAggregator};
 use datafusion::arrow::ipc::writer::FileWriter;
 use duo_api::instrument::{
     instrument_server::Instrument, RecordEventRequest, RecordEventResponse, RecordSpanRequest,
@@ -70,7 +70,7 @@ impl DuoServer {
 
                 if !guard.span_batches.is_empty() {
                     let mut span_writer =
-                        FileWriter::try_new(File::create("span.arrow").unwrap(), &schema_span())
+                        FileWriter::try_new(File::create("span.arrow").unwrap(), &SPAN_SCHEMA)
                             .unwrap();
                     for batch in &guard.span_batches {
                         span_writer.write(batch).unwrap();

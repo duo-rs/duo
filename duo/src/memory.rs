@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::{collections::HashMap, fmt::Debug, fs::File, io::Write, mem, path::Path};
 
-use crate::arrow::{convert_log_to_record_batch, convert_span_to_record_batch, schema_log};
+use crate::arrow::{convert_log_to_record_batch, convert_span_to_record_batch, LOG_SCHEMA};
 use crate::{Log, Process, Span};
 use anyhow::Result;
 use arrow_schema::Schema;
@@ -35,7 +35,7 @@ impl MemoryStore {
     pub fn new() -> Self {
         MemoryStore {
             services: HashMap::new(),
-            log_schema: schema_log(),
+            log_schema: Arc::clone(&*LOG_SCHEMA),
             span_batches: vec![],
             log_batches: vec![],
             is_dirty: false,
@@ -69,7 +69,7 @@ impl MemoryStore {
     }
 
     pub(super) fn reset(&mut self) -> (Vec<RecordBatch>, Vec<RecordBatch>) {
-        self.log_schema = schema_log();
+        self.log_schema = Arc::clone(&*LOG_SCHEMA);
         (
             mem::take(&mut self.span_batches),
             mem::take(&mut self.log_batches),

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use crate::arrow::schema_span;
 use crate::arrow::serialize_record_batches;
+use crate::arrow::SPAN_SCHEMA;
 use crate::partition::PartitionQuery;
 use crate::MemoryStore;
 
@@ -36,7 +36,7 @@ impl QueryEngine {
             None
         } else {
             Some(
-                MemTable::try_new(schema_span(), vec![guard.span_batches.clone()])
+                MemTable::try_new(Arc::clone(&*SPAN_SCHEMA), vec![guard.span_batches.clone()])
                     .expect("Create Memtable failed"),
             )
         };
