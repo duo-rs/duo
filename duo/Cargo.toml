@@ -32,4 +32,4 @@ url = "2.5.2"
 toml = "0.8.19"
 
 [dev-dependencies]
-rstest = "0.16"
+rstest = "0.22"

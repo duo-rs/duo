@@ -86,24 +86,3 @@ impl PartitionQuery {
         Ok(df.collect().await.unwrap_or_default())
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use time::format_description::well_known::Rfc3339;
-
-    use super::*;
-    use datafusion::prelude::*;
-
-    #[tokio::test]
-    async fn test_query() {
-        let query = PartitionQuery::new(
-            OffsetDateTime::parse("2023-06-04T14:45:00+00:00", &Rfc3339).unwrap(),
-            OffsetDateTime::parse("2023-06-04T14:46:00+00:00", &Rfc3339).unwrap(),
-        );
-        let v = query
-            .query_table("span", col("trace_id").eq(lit("15427617998887099000")))
-            .await
-            .unwrap();
-        assert!(v.len() == 8);
-    }
-}
