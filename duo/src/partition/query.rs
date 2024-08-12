@@ -13,7 +13,7 @@ use datafusion::{
 use time::{Duration, OffsetDateTime};
 use url::Url;
 
-use crate::{arrow::SPAN_SCHEMA, config, schema, utils::TimePeriod};
+use crate::{config, schema, utils::TimePeriod};
 
 static TABLE_SPAN: &str = "span";
 
@@ -64,7 +64,7 @@ impl PartitionQuery {
             ListingTableConfig::new_with_multi_paths(self.table_paths(table_name))
                 .with_listing_options(listing_options);
         if table_name == TABLE_SPAN {
-            listing_table_config = listing_table_config.with_schema(Arc::clone(&*SPAN_SCHEMA));
+            listing_table_config = listing_table_config.with_schema(schema::get_span_schema());
         } else {
             // FIXME: log dynamic fields schema
             listing_table_config = listing_table_config.with_schema(schema::get_log_schema());

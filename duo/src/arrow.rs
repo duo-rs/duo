@@ -3,25 +3,12 @@ use datafusion::arrow::json::{
 };
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value as JsonValue};
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 
 use crate::{schema, Log, Span};
 use anyhow::Result;
-use arrow_schema::{DataType, Field, Schema, SchemaRef};
+use arrow_schema::Schema;
 use datafusion::arrow::array::{Int64Array, RecordBatch, StringArray, UInt64Array};
-
-pub static SPAN_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
-    Arc::new(Schema::new(vec![
-        Field::new("id", DataType::UInt64, false),
-        Field::new("parent_id", DataType::UInt64, true),
-        Field::new("trace_id", DataType::UInt64, false),
-        Field::new("name", DataType::Utf8, false),
-        Field::new("process_id", DataType::Utf8, false),
-        Field::new("start", DataType::Int64, false),
-        Field::new("end", DataType::Int64, true),
-        Field::new("tags", DataType::Utf8, true),
-    ]))
-});
 
 pub fn convert_span_to_record_batch(spans: Vec<Span>) -> Result<RecordBatch> {
     let mut span_ids = Vec::<u64>::new();
@@ -47,11 +34,11 @@ pub fn convert_span_to_record_batch(spans: Vec<Span>) -> Result<RecordBatch> {
     }
 
     if span_ids.is_empty() {
-        return Ok(RecordBatch::new_empty(Arc::clone(&*SPAN_SCHEMA)));
+        return Ok(RecordBatch::new_empty(schema::get_span_schema()));
     }
 
     Ok(RecordBatch::try_new(
-        Arc::clone(&*SPAN_SCHEMA),
+        schema::get_span_schema(),
         vec![
             Arc::new(UInt64Array::from(span_ids)),
             Arc::new(UInt64Array::from(parent_ids)),

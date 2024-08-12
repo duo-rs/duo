@@ -1,6 +1,6 @@
 use std::sync::{
     atomic::{AtomicBool, Ordering},
-    Arc, OnceLock,
+    Arc, LazyLock, OnceLock,
 };
 
 use anyhow::Result;
@@ -13,6 +13,19 @@ use crate::config;
 static LOG_SCHEMA: OnceLock<RwLock<Arc<Schema>>> = OnceLock::new();
 static LOG_SCHEMA_DIRTY: AtomicBool = AtomicBool::new(false);
 
+static SPAN_SCHEMA: LazyLock<Arc<Schema>> = LazyLock::new(|| {
+    Arc::new(Schema::new(vec![
+        Field::new("id", DataType::UInt64, false),
+        Field::new("parent_id", DataType::UInt64, true),
+        Field::new("trace_id", DataType::UInt64, false),
+        Field::new("name", DataType::Utf8, false),
+        Field::new("process_id", DataType::Utf8, false),
+        Field::new("start", DataType::Int64, false),
+        Field::new("end", DataType::Int64, true),
+        Field::new("tags", DataType::Utf8, true),
+    ]))
+});
+
 #[inline]
 fn default_log_schema() -> Arc<Schema> {
     Arc::new(Schema::new(vec![
@@ -23,6 +36,10 @@ fn default_log_schema() -> Arc<Schema> {
         Field::new("level", DataType::Utf8, false),
         Field::new("message", DataType::Utf8, true),
     ]))
+}
+
+pub fn get_span_schema() -> Arc<Schema> {
+    Arc::clone(&SPAN_SCHEMA)
 }
 
 pub async fn load() -> Result<()> {
