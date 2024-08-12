@@ -94,6 +94,8 @@ Run your application then check the http://127.0.0.1:3000 to see the tracing dat
 
 - [x] Support Object Store.
 
+- [ ] Integrate Apache Iceberg?
+
 - [ ] Support OpenTelemetry specification, aimed to be a lightweight OpenTelemetry backend.
 
 ## License

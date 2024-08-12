@@ -28,7 +28,7 @@ fn baz() {
 #[tracing::instrument]
 fn foz() {
     debug!("hello foz!");
-    error!("Oops!");
+    error!(flag = 1, data = "data", "Oops!");
 }
 
 #[tokio::main]

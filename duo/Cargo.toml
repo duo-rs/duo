@@ -9,7 +9,7 @@ license.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-arrow-schema = "52.1.0"
+arrow-schema = { version = "52.1.0", features = ["serde"] }
 axum = "0.7"
 rand.workspace = true
 clap = { version = "4", default-features = false, features = ["std", "derive"] }

@@ -1,6 +1,8 @@
 use std::{fs::File, mem, sync::Arc, time::Duration};
 
-use crate::{arrow::SPAN_SCHEMA, partition::PartitionWriter, Log, MemoryStore, SpanAggregator};
+use crate::{
+    arrow::SPAN_SCHEMA, partition::PartitionWriter, schema, Log, MemoryStore, SpanAggregator,
+};
 use datafusion::arrow::ipc::writer::FileWriter;
 use duo_api::instrument::{
     instrument_server::Instrument, RecordEventRequest, RecordEventResponse, RecordSpanRequest,
@@ -88,7 +90,11 @@ impl DuoServer {
                     log_writer.finish().unwrap();
                 }
                 drop(guard);
+
                 memory_store.write().is_dirty = false;
+                tokio::spawn(async {
+                    schema::persit_log_schema().await;
+                });
             }
         });
 

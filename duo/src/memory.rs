@@ -1,8 +1,8 @@
 use std::sync::Arc;
 use std::{collections::HashMap, fmt::Debug, fs::File, io::Write, mem, path::Path};
 
-use crate::arrow::{convert_log_to_record_batch, convert_span_to_record_batch, LOG_SCHEMA};
-use crate::{Log, Process, Span};
+use crate::arrow::{convert_log_to_record_batch, convert_span_to_record_batch};
+use crate::{schema, Log, Process, Span};
 use anyhow::Result;
 use arrow_schema::Schema;
 use datafusion::arrow::array::RecordBatch;
@@ -35,7 +35,7 @@ impl MemoryStore {
     pub fn new() -> Self {
         MemoryStore {
             services: HashMap::new(),
-            log_schema: Arc::clone(&*LOG_SCHEMA),
+            log_schema: schema::get_log_schema(),
             span_batches: vec![],
             log_batches: vec![],
             is_dirty: false,
@@ -69,7 +69,6 @@ impl MemoryStore {
     }
 
     pub(super) fn reset(&mut self) -> (Vec<RecordBatch>, Vec<RecordBatch>) {
-        self.log_schema = Arc::clone(&*LOG_SCHEMA);
         (
             mem::take(&mut self.span_batches),
             mem::take(&mut self.log_batches),
@@ -116,9 +115,7 @@ impl MemoryStore {
         let batches = convert_log_to_record_batch(logs).unwrap();
 
         let schema = batches.schema();
-        self.log_schema = Arc::new(
-            Schema::try_merge(vec![(*self.log_schema).clone(), (*schema).clone()]).unwrap(),
-        );
+        self.log_schema = schema::merge_log_schema(schema);
         self.log_batches.push(batches);
         self.is_dirty = true;
     }

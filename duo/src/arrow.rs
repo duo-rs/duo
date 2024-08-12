@@ -5,7 +5,7 @@ use serde::de::DeserializeOwned;
 use serde_json::{Map, Value as JsonValue};
 use std::sync::{Arc, LazyLock};
 
-use crate::{Log, Span};
+use crate::{schema, Log, Span};
 use anyhow::Result;
 use arrow_schema::{DataType, Field, Schema, SchemaRef};
 use datafusion::arrow::array::{Int64Array, RecordBatch, StringArray, UInt64Array};
@@ -20,17 +20,6 @@ pub static SPAN_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
         Field::new("start", DataType::Int64, false),
         Field::new("end", DataType::Int64, true),
         Field::new("tags", DataType::Utf8, true),
-    ]))
-});
-
-pub static LOG_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
-    Arc::new(Schema::new(vec![
-        Field::new("process_id", DataType::Utf8, false),
-        Field::new("time", DataType::Int64, false),
-        Field::new("trace_id", DataType::UInt64, true),
-        Field::new("span_id", DataType::UInt64, true),
-        Field::new("level", DataType::Utf8, false),
-        Field::new("message", DataType::Utf8, true),
     ]))
 });
 
@@ -101,7 +90,11 @@ pub fn convert_log_to_record_batch(logs: Vec<Log>) -> Result<RecordBatch> {
     }
 
     let inferred_field_schema = infer_json_schema_from_iterator(fields.iter().map(Ok))?;
-    let schema = Schema::try_merge(vec![(**LOG_SCHEMA).clone(), inferred_field_schema]).unwrap();
+    let schema = Schema::try_merge(vec![
+        (*schema::get_log_schema()).clone(),
+        inferred_field_schema,
+    ])
+    .unwrap();
     let mut decoder = ReaderBuilder::new(Arc::new(schema)).build_decoder()?;
     decoder.serialize(&data)?;
     let batch = decoder.flush()?.expect("Empty record batch");

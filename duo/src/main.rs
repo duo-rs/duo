@@ -25,6 +25,7 @@ mod memory;
 mod models;
 mod partition;
 mod query;
+mod schema;
 mod utils;
 mod web;
 
@@ -85,6 +86,7 @@ async fn main() -> Result<()> {
     if let Some(config_file) = config_file {
         let config = DuoConfig::parse_from_toml(config_file)?;
         config::set(config);
+        schema::load().await?;
     }
 
     let memory_store = Arc::new(RwLock::new(MemoryStore::load(".")?));
