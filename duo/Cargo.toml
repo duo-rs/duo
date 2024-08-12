@@ -9,7 +9,8 @@ license.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-arrow-schema = { version = "52.1.0", features = ["serde"] }
+datafusion = "41"
+arrow-schema = { version = "52.2.0", features = ["serde"] }
 axum = "0.7"
 rand.workspace = true
 clap = { version = "4", default-features = false, features = ["std", "derive"] }
@@ -19,12 +20,11 @@ parking_lot = { version = "0.12", features = ["send_guard"] }
 serde.workspace = true
 serde_json.workspace = true
 time = { version = "0.3", features = ["parsing"] }
-tokio = { version = "1", features = ["rt-multi-thread", "fs"] }
+tokio = { version = "1.39", features = ["rt-multi-thread", "fs"] }
 tonic.workspace = true
 tower = "0.4"
 tracing.workspace = true
 tracing-subscriber.workspace = true
-datafusion = "40"
 rust-embed = "8.5"
 mime_guess = "2"
 object_store = { version = "0.10.2", features = ["aws"] }
