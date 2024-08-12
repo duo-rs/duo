@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, marker::PhantomData, str::FromStr};
 
 use serde::de;
 use serde_json::Value;
@@ -24,6 +24,13 @@ where
     D: de::Deserializer<'de>,
 {
     d.deserialize_any(ListValueVisitor)
+}
+
+pub fn str_sequence<'de, D>(d: D) -> Result<Vec<String>, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    d.deserialize_any(SeparatedSequenceVisitor(PhantomData))
 }
 
 pub(super) fn option_duration<'de, D>(d: D) -> Result<Option<Duration>, D::Error>
@@ -74,6 +81,28 @@ pub mod level {
     {
         let level = String::deserialize(deserializer)?;
         Ok(Level::from_str(&level).expect("invalid level"))
+    }
+}
+
+struct SeparatedSequenceVisitor<T: FromStr>(PhantomData<T>);
+
+impl<'de, T: FromStr> de::Visitor<'de> for SeparatedSequenceVisitor<T> {
+    type Value = Vec<T>;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(formatter, "an array string")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        let list = v
+            .split(",")
+            .filter(|s| !str::is_empty(s))
+            .filter_map(|s| FromStr::from_str(s).ok())
+            .collect();
+        Ok(list)
     }
 }
 

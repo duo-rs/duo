@@ -79,7 +79,7 @@ pub fn convert_log_to_record_batch(logs: Vec<Log>) -> Result<RecordBatch> {
         data.push(JsonValue::Object(map));
     }
 
-    let inferred_field_schema = infer_json_schema_from_iterator(fields.iter().map(Ok)).unwrap();
+    let inferred_field_schema = infer_json_schema_from_iterator(fields.iter().map(Ok))?;
     let schema = Schema::try_merge(vec![
         (*schema::get_log_schema()).clone(),
         inferred_field_schema,

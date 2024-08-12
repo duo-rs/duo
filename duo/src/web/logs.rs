@@ -6,7 +6,7 @@ use axum::Json;
 use datafusion::prelude::*;
 use parking_lot::RwLock;
 use serde::Deserialize;
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 
 use crate::query::QueryEngine;
 use crate::{Log, MemoryStore};
@@ -25,7 +25,8 @@ pub(super) struct QueryParameters {
     #[serde(default, deserialize_with = "deser::option_miscrosecond")]
     pub end: Option<OffsetDateTime>,
     keyword: Option<String>,
-    level: Option<String>,
+    #[serde(default, deserialize_with = "deser::str_sequence")]
+    levels: Vec<String>,
 }
 
 #[tracing::instrument]
@@ -36,14 +37,16 @@ pub(super) async fn list(
     let process_prefix = p.service;
     let limit = p.limit.unwrap_or(DEFAUT_LOG_LIMIT);
     let query_engine = QueryEngine::new(memory_store);
-    let expr = col("process_id").like(lit(format!("{process_prefix}%")));
+    let mut expr = col("process_id").like(lit(format!("{process_prefix}%")));
+    if let Some(keyword) = p.keyword {
+        expr = expr.and(col("message").like(lit(format!("%{keyword}%"))));
+    }
+    if !p.levels.is_empty() {
+        expr = expr.and(col("level").in_list(p.levels.into_iter().map(lit).collect(), false));
+    }
     let total_logs = query_engine
         .query_log(expr)
-        .range(
-            p.start
-                .or_else(|| Some(OffsetDateTime::now_utc() - Duration::minutes(15))),
-            p.end,
-        )
+        .range(p.start, p.end)
         .collect::<Log>()
         .await
         .unwrap_or_default();
