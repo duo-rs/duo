@@ -32,17 +32,13 @@ impl QueryEngine {
 
     pub fn query_span(&self, expr: Expr) -> Query {
         let guard = self.memory_store.read();
-        let memtable: Option<MemTable> = if guard.span_batches.is_empty() {
-            None
-        } else {
-            Some(
-                MemTable::try_new(schema::get_span_schema(), vec![guard.span_batches.clone()])
-                    .expect("Create Memtable failed"),
-            )
-        };
         Query {
             table_name: "span",
-            memtable,
+            memtable: MemTable::try_new(
+                schema::get_span_schema(),
+                vec![guard.span_batches.clone()],
+            )
+            .expect("Create Memtable failed"),
             expr,
             start: None,
             end: None,
@@ -51,20 +47,13 @@ impl QueryEngine {
 
     pub fn query_log(&self, expr: Expr) -> Query {
         let guard = self.memory_store.read();
-        let memtable = if guard.log_batches.is_empty() {
-            None
-        } else {
-            Some(
-                MemTable::try_new(
-                    Arc::clone(&guard.log_schema),
-                    vec![guard.log_batches.clone()],
-                )
-                .expect("Create Memtable failed"),
-            )
-        };
         Query {
             table_name: "log",
-            memtable,
+            memtable: MemTable::try_new(
+                Arc::clone(&guard.log_schema),
+                vec![guard.log_batches.clone()],
+            )
+            .expect("Create Memtable failed"),
             expr,
             start: None,
             end: None,
@@ -75,7 +64,7 @@ impl QueryEngine {
 pub struct Query {
     table_name: &'static str,
     expr: Expr,
-    memtable: Option<MemTable>,
+    memtable: MemTable,
     start: Option<OffsetDateTime>,
     end: Option<OffsetDateTime>,
 }
@@ -91,12 +80,8 @@ impl Query {
     }
 
     pub async fn collect<T: DeserializeOwned>(self) -> Result<Vec<T>> {
-        let mut total_batches = vec![];
-        if let Some(memtable) = self.memtable {
-            let ctx = SessionContext::new();
-            let df = ctx.read_table(Arc::new(memtable))?;
-            total_batches = df.filter(self.expr.clone())?.collect().await?;
-        }
+        let ctx = SessionContext::new();
+        let mut df = ctx.read_table(Arc::new(self.memtable))?;
 
         // Don't query data from storage in memory mode
         // TODO: make query parallel
@@ -106,19 +91,15 @@ impl Query {
                     .unwrap_or_else(|| OffsetDateTime::now_utc() - Duration::minutes(15)),
                 self.end.unwrap_or(OffsetDateTime::now_utc()),
             );
-            let batches = pq.query_table(self.table_name, self.expr).await.unwrap();
-            tracing::debug!("{} from parquet: {}", self.table_name, batches.len());
-            total_batches.extend(batches);
+            df = df.union(pq.df(self.table_name).await?)?;
         }
-
-        Ok(serialize_record_batches::<T>(&total_batches).unwrap())
+        let batches = df.filter(self.expr)?.collect().await?;
+        Ok(serialize_record_batches::<T>(&batches).unwrap())
     }
 }
 
 impl AggregateQuery {
     pub async fn collect(self) -> Result<Vec<RecordBatch>> {
-        let mut total_batches = vec![];
-
         let Query {
             table_name,
             expr,
@@ -127,15 +108,8 @@ impl AggregateQuery {
             end,
         } = self.raw_query;
 
-        if let Some(memtable) = memtable {
-            let ctx = SessionContext::new();
-            let df = ctx.read_table(Arc::new(memtable))?;
-            total_batches = df
-                .filter(expr.clone())?
-                .aggregate(self.group_expr.clone(), vec![])?
-                .collect()
-                .await?;
-        }
+        let ctx = SessionContext::new();
+        let mut df = ctx.read_table(Arc::new(memtable))?;
 
         // Don't query data from storage in memory mode
         if !crate::is_memory_mode() {
@@ -143,11 +117,13 @@ impl AggregateQuery {
                 start.unwrap_or_else(|| OffsetDateTime::now_utc() - Duration::minutes(15)),
                 end.unwrap_or(OffsetDateTime::now_utc()),
             );
-            let df = pq.df(table_name, expr).await?;
-            let batches = df.aggregate(self.group_expr, vec![])?.collect().await?;
-            tracing::debug!("aggregate from parquet: {}", batches.len());
-            total_batches.extend(batches);
+            df = df.union(pq.df(table_name).await?)?;
         }
-        Ok(total_batches)
+        let batches = df
+            .filter(expr)?
+            .aggregate(self.group_expr, vec![])?
+            .collect()
+            .await?;
+        Ok(batches)
     }
 }
