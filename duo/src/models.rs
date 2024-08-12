@@ -41,6 +41,9 @@ pub struct Log {
     // TODO: change level to i32
     #[serde(with = "deser::level")]
     pub level: Level,
+    pub target: String,
+    pub file: Option<String>,
+    pub line: Option<u32>,
     #[serde(with = "deser::miscrosecond")]
     pub time: OffsetDateTime,
     pub message: String,
@@ -163,6 +166,9 @@ impl From<proto::Log> for Log {
             span_id: log.span_id,
             trace_id: log.trace_id,
             level,
+            target: log.target,
+            file: log.file,
+            line: log.line,
             time: log
                 .time
                 .and_then(|timestamp| {

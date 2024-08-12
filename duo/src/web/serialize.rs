@@ -163,6 +163,13 @@ impl<'a> Serialize for JaegerLog<'a> {
         let mut fields = HashMap::new();
         fields.insert("message".into(), self.0.message.clone().into());
         fields.insert("level".into(), self.0.level.as_str().into());
+        fields.insert("target".into(), self.0.target.as_str().into());
+        if let Some(file) = &self.0.file {
+            fields.insert(
+                "file".into(),
+                format!("{}:{}", &file, self.0.line.unwrap_or_default()).into(),
+            );
+        }
         fields.extend(self.0.fields.clone());
         map.serialize_entry(
             "fields",

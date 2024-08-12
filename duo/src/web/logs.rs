@@ -24,6 +24,8 @@ pub(super) struct QueryParameters {
     pub start: Option<OffsetDateTime>,
     #[serde(default, deserialize_with = "deser::option_miscrosecond")]
     pub end: Option<OffsetDateTime>,
+    keyword: Option<String>,
+    level: Option<String>,
 }
 
 #[tracing::instrument]

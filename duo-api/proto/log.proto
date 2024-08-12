@@ -14,8 +14,15 @@ message Log {
     optional uint64 trace_id = 3;
     // Describes the level of verbosity of a log.
     common.Level level = 4;
+    // The part of the system that the span that this metadata describes
+    // occurred in.
+    string target = 5;
+    // The name of the source code file where the log occurred.
+    optional string file = 6;
+    // The line number in the source code file where the log occurred.
+    optional uint32 line = 7;
     // Timestamp.
-    google.protobuf.Timestamp time = 5;
+    google.protobuf.Timestamp time = 8;
     // Key-value fileds.
-    map<string, common.Value> fields = 6;
+    map<string, common.Value> fields = 9;
 }

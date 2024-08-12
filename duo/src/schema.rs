@@ -34,6 +34,9 @@ fn default_log_schema() -> Arc<Schema> {
         Field::new("trace_id", DataType::UInt64, true),
         Field::new("span_id", DataType::UInt64, true),
         Field::new("level", DataType::Utf8, false),
+        Field::new("target", DataType::Utf8, true),
+        Field::new("file", DataType::Utf8, true),
+        Field::new("line", DataType::UInt32, true),
         Field::new("message", DataType::Utf8, true),
     ]))
 }
@@ -51,8 +54,11 @@ pub async fn load() -> Result<()> {
     {
         Ok(data) => {
             let schema = serde_json::from_slice::<Schema>(&data.bytes().await?)?;
+            let latest_schema =
+                Schema::try_merge(vec![(*default_log_schema()).clone(), schema]).unwrap();
+            LOG_SCHEMA_DIRTY.store(true, Ordering::Relaxed);
             LOG_SCHEMA
-                .set(RwLock::new(Arc::new(schema)))
+                .set(RwLock::new(Arc::new(latest_schema)))
                 .expect("LogSchema already initialized");
         }
         Err(_err) => {
