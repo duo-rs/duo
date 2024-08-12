@@ -11,6 +11,7 @@ use datafusion::{
     prelude::{DataFrame, Expr, SessionContext},
 };
 use time::{Duration, OffsetDateTime};
+use url::Url;
 
 use crate::{arrow::SPAN_SCHEMA, config, schema, utils::TimePeriod};
 
@@ -18,6 +19,7 @@ static TABLE_SPAN: &str = "span";
 
 pub struct PartitionQuery {
     ctx: SessionContext,
+    object_store_url: Url,
     prefixes: Vec<String>,
 }
 
@@ -25,9 +27,11 @@ impl PartitionQuery {
     pub fn new(start: OffsetDateTime, end: OffsetDateTime) -> Self {
         let ctx = SessionContext::new();
         let config = config::load();
-        ctx.register_object_store(&config.object_store_url(), config.object_store());
+        let object_store_url = config.object_store_url();
+        ctx.register_object_store(&object_store_url, config.object_store());
         PartitionQuery {
             ctx,
+            object_store_url,
             prefixes: TimePeriod::new(start, end, 1).generate_prefixes(),
         }
     }
@@ -41,7 +45,14 @@ impl PartitionQuery {
     fn table_paths(&self, table_name: &str) -> Vec<ListingTableUrl> {
         self.prefixes
             .iter()
-            .filter_map(|prefix| ListingTableUrl::parse(format!("{table_name}/{prefix}")).ok())
+            .filter_map(|prefix| {
+                ListingTableUrl::parse(
+                    self.object_store_url
+                        .join(&format!("/{table_name}/{prefix}"))
+                        .unwrap(),
+                )
+                .ok()
+            })
             .collect()
     }
 

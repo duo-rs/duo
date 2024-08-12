@@ -52,7 +52,19 @@ impl DuoConfig {
 
     pub fn object_store_url(&self) -> Url {
         match &self.storage {
-            StorageConfig::Local { dir } => Url::parse(&format!("file://{dir}")).unwrap(),
+            StorageConfig::Local { dir } => {
+                let path = Path::new(dir);
+                if path.is_relative() {
+                    if let Ok(cwd) = env::current_dir() {
+                        let path = cwd.join(path);
+                        if path.is_relative() {
+                            panic!("Invalid path: {}", path.display());
+                        }
+                        return Url::parse(&format!("file://{}", path.display())).unwrap();
+                    }
+                }
+                Url::parse(&format!("file://{dir}")).unwrap()
+            }
             StorageConfig::S3 { bucket, .. } => Url::parse(&format!("s3://{bucket}")).unwrap(),
         }
     }
@@ -60,6 +72,11 @@ impl DuoConfig {
     pub fn object_store(&self) -> Arc<dyn ObjectStore> {
         match &self.storage {
             StorageConfig::Local { dir } => {
+                let path = Path::new(dir);
+                if !path.exists() {
+                    std::fs::create_dir_all(path).unwrap();
+                }
+
                 Arc::new(LocalFileSystem::new_with_prefix(dir).unwrap())
             }
             StorageConfig::S3 {
