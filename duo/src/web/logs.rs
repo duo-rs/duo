@@ -62,7 +62,8 @@ pub(super) async fn field_stats(
 
     #[derive(Serialize, Deserialize)]
     struct FieldStats {
-        field: String,
+        // FIXME: need support int, bool
+        value: String,
         count: i64,
     }
     let query_engine = QueryEngine::new(memory_store);
@@ -70,8 +71,10 @@ pub(super) async fn field_stats(
     let stats = query_engine
         .query_log(p.expr())
         .range(p.start, p.end)
+        // sort by count desc
+        .sort(vec![col("count").sort(false, false)])
         .aggregate(
-            vec![c.clone().alias("field")],
+            vec![c.clone().alias("value")],
             vec![count(c).alias("count")],
         )
         .collect::<FieldStats>()

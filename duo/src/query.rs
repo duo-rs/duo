@@ -1,3 +1,4 @@
+use std::mem;
 use std::sync::Arc;
 
 use crate::arrow::serialize_record_batches;
@@ -39,6 +40,7 @@ impl QueryEngine {
             expr,
             start: None,
             end: None,
+            sort_expr: Vec::new(),
         }
     }
 
@@ -54,6 +56,7 @@ impl QueryEngine {
             expr,
             start: None,
             end: None,
+            sort_expr: Vec::new(),
         }
     }
 }
@@ -64,6 +67,7 @@ pub struct Query {
     memtable: MemTable,
     start: Option<OffsetDateTime>,
     end: Option<OffsetDateTime>,
+    sort_expr: Vec<Expr>,
 }
 
 pub struct AggregateQuery {
@@ -93,6 +97,10 @@ impl Query {
         Ok(df.filter(self.expr)?)
     }
 
+    pub fn sort(self, sort_expr: Vec<Expr>) -> Self {
+        Self { sort_expr, ..self }
+    }
+
     pub fn aggregate(self, group_expr: Vec<Expr>, aggr_expr: Vec<Expr>) -> AggregateQuery {
         AggregateQuery {
             raw_query: self,
@@ -101,21 +109,29 @@ impl Query {
         }
     }
 
-    pub async fn collect<T: DeserializeOwned>(self) -> Result<Vec<T>> {
-        let batches = self.df().await?.collect().await?;
+    pub async fn collect<T: DeserializeOwned>(mut self) -> Result<Vec<T>> {
+        let sort_expr = mem::take(&mut self.sort_expr);
+        let mut df = self.df().await?;
+        if !sort_expr.is_empty() {
+            df = df.sort(sort_expr)?;
+        }
+        let batches = df.collect().await?;
         Ok(serialize_record_batches::<T>(&batches)?)
     }
 }
 
 impl AggregateQuery {
-    pub async fn collect<T: DeserializeOwned>(self) -> Result<Vec<T>> {
-        let batches = self
+    pub async fn collect<T: DeserializeOwned>(mut self) -> Result<Vec<T>> {
+        let sort_expr = mem::take(&mut self.raw_query.sort_expr);
+        let mut df = self
             .raw_query
             .df()
             .await?
-            .aggregate(self.group_expr, self.aggr_expr)?
-            .collect()
-            .await?;
+            .aggregate(self.group_expr, self.aggr_expr)?;
+        if !sort_expr.is_empty() {
+            df = df.sort(sort_expr)?;
+        }
+        let batches = df.collect().await?;
         Ok(serialize_record_batches::<T>(&batches)?)
     }
 }
