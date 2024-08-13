@@ -6,8 +6,8 @@ use crate::schema;
 use crate::MemoryStore;
 
 use anyhow::{Ok, Result};
-use datafusion::arrow::array::RecordBatch;
 use datafusion::datasource::MemTable;
+use datafusion::prelude::DataFrame;
 use datafusion::prelude::SessionContext;
 use datafusion::prelude::{col, Expr};
 use parking_lot::RwLock;
@@ -24,10 +24,7 @@ impl QueryEngine {
     }
 
     pub fn aggregate_span_names(self, expr: Expr) -> AggregateQuery {
-        AggregateQuery {
-            raw_query: self.query_span(expr),
-            group_expr: vec![col("name")],
-        }
+        self.query_span(expr).aggregate(vec![col("name")], vec![])
     }
 
     pub fn query_span(&self, expr: Expr) -> Query {
@@ -72,6 +69,7 @@ pub struct Query {
 pub struct AggregateQuery {
     raw_query: Query,
     group_expr: Vec<Expr>,
+    aggr_expr: Vec<Expr>,
 }
 
 impl Query {
@@ -79,12 +77,11 @@ impl Query {
         Self { start, end, ..self }
     }
 
-    pub async fn collect<T: DeserializeOwned>(self) -> Result<Vec<T>> {
+    async fn df(self) -> Result<DataFrame> {
         let ctx = SessionContext::new();
         let mut df = ctx.read_table(Arc::new(self.memtable))?;
 
         // Don't query data from storage in memory mode
-        // TODO: make query parallel
         if !crate::is_memory_mode() {
             let pq = PartitionQuery::new(
                 self.start
@@ -93,37 +90,32 @@ impl Query {
             );
             df = df.union(pq.df(self.table_name).await?)?;
         }
-        let batches = df.filter(self.expr)?.collect().await?;
-        Ok(serialize_record_batches::<T>(&batches).unwrap())
+        Ok(df.filter(self.expr)?)
+    }
+
+    pub fn aggregate(self, group_expr: Vec<Expr>, aggr_expr: Vec<Expr>) -> AggregateQuery {
+        AggregateQuery {
+            raw_query: self,
+            group_expr,
+            aggr_expr,
+        }
+    }
+
+    pub async fn collect<T: DeserializeOwned>(self) -> Result<Vec<T>> {
+        let batches = self.df().await?.collect().await?;
+        Ok(serialize_record_batches::<T>(&batches)?)
     }
 }
 
 impl AggregateQuery {
-    pub async fn collect(self) -> Result<Vec<RecordBatch>> {
-        let Query {
-            table_name,
-            expr,
-            memtable,
-            start,
-            end,
-        } = self.raw_query;
-
-        let ctx = SessionContext::new();
-        let mut df = ctx.read_table(Arc::new(memtable))?;
-
-        // Don't query data from storage in memory mode
-        if !crate::is_memory_mode() {
-            let pq = PartitionQuery::new(
-                start.unwrap_or_else(|| OffsetDateTime::now_utc() - Duration::minutes(15)),
-                end.unwrap_or(OffsetDateTime::now_utc()),
-            );
-            df = df.union(pq.df(table_name).await?)?;
-        }
-        let batches = df
-            .filter(expr)?
-            .aggregate(self.group_expr, vec![])?
+    pub async fn collect<T: DeserializeOwned>(self) -> Result<Vec<T>> {
+        let batches = self
+            .raw_query
+            .df()
+            .await?
+            .aggregate(self.group_expr, self.aggr_expr)?
             .collect()
             .await?;
-        Ok(batches)
+        Ok(serialize_record_batches::<T>(&batches)?)
     }
 }

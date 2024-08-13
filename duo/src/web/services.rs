@@ -1,8 +1,8 @@
 use crate::query::QueryEngine;
 use crate::{Log, MemoryStore, Span, TraceExt};
-use datafusion::arrow::array::StringArray;
 use datafusion::prelude::*;
 use parking_lot::RwLock;
+use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -133,26 +133,21 @@ pub(super) async fn aggregate_span_names(
     memory_store: Arc<RwLock<MemoryStore>>,
     service: &str,
 ) -> HashSet<String> {
+    #[derive(Deserialize)]
+    struct SpanName {
+        name: String,
+    }
+
     let query_engine = QueryEngine::new(memory_store);
     let expr = col("process_id").like(lit(format!("{service}%")));
     let batches = query_engine
         .aggregate_span_names(expr)
-        .collect()
+        .collect::<SpanName>()
         .await
         .unwrap_or_default();
 
     batches
         .into_iter()
-        .flat_map(|batch| {
-            batch
-                .column(0)
-                .as_any()
-                .downcast_ref::<StringArray>()
-                .unwrap()
-                .iter()
-                .flatten()
-                .map(|s| s.to_string())
-                .collect::<Vec<_>>()
-        })
+        .map(|item| item.name)
         .collect::<HashSet<_>>()
 }
