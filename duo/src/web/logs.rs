@@ -9,7 +9,7 @@ use serde::Deserialize;
 use time::OffsetDateTime;
 
 use crate::query::QueryEngine;
-use crate::{Log, MemoryStore};
+use crate::{schema, Log, MemoryStore};
 
 use super::deser;
 
@@ -27,6 +27,11 @@ pub(super) struct QueryParameters {
     keyword: Option<String>,
     #[serde(default, deserialize_with = "deser::str_sequence")]
     levels: Vec<String>,
+}
+
+#[tracing::instrument]
+pub(super) async fn schema() -> impl IntoResponse {
+    Json(schema::get_log_schema())
 }
 
 #[tracing::instrument]
