@@ -48,7 +48,7 @@ impl PartitionQuery {
             .filter_map(|prefix| {
                 ListingTableUrl::parse(
                     self.object_store_url
-                        .join(&format!("/{table_name}/{prefix}"))
+                        .join(&format!("{table_name}/{prefix}"))
                         .unwrap(),
                 )
                 .ok()

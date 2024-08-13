@@ -60,12 +60,16 @@ impl DuoConfig {
                         if path.is_relative() {
                             panic!("Invalid path: {}", path.display());
                         }
-                        return Url::parse(&format!("file://{}", path.display())).unwrap();
+                        // A trailing slash is significant. Without it, the last path component
+                        // is considered to be a “file” name to be removed to get at the “directory”
+                        // that is used as the base.
+                        // https://docs.rs/url/latest/url/struct.Url.html#method.join
+                        return Url::parse(&format!("file://{}/", path.display())).unwrap();
                     }
                 }
-                Url::parse(&format!("file://{dir}")).unwrap()
+                Url::parse(&format!("file://{dir}/")).unwrap()
             }
-            StorageConfig::S3 { bucket, .. } => Url::parse(&format!("s3://{bucket}")).unwrap(),
+            StorageConfig::S3 { bucket, .. } => Url::parse(&format!("s3://{bucket}/")).unwrap(),
         }
     }
 
