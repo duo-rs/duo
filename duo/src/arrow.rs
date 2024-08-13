@@ -101,6 +101,9 @@ pub fn serialize_record_batches<T: DeserializeOwned>(batch: &[RecordBatch]) -> R
     writer.write_batches(&batch.iter().collect::<Vec<_>>())?;
     writer.finish()?;
     let json_values = writer.into_inner();
-    let json_rows: Vec<_> = serde_json::from_reader(json_values.as_slice()).unwrap_or_default();
+    if json_values.is_empty() {
+        return Ok(vec![]);
+    }
+    let json_rows: Vec<_> = serde_json::from_reader(json_values.as_slice()).unwrap();
     Ok(json_rows)
 }
