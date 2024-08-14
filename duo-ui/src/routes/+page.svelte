@@ -1,12 +1,18 @@
 <script>
+	import Svelecte from 'svelecte';
 	import CalendarIcon from 'lucide-svelte/icons/calendar';
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
+	import { Separator } from '$lib/components/ui/separator';
 	import { onMount } from 'svelte';
 	import { DatePicker } from '@svelte-plugins/datepicker';
 	import { cn } from '$lib/utils';
 	import dayjs from 'dayjs';
 
+	export const ssr = false;
+
+	/** @type {import('./$types').PageData} */
+	export let data;
 	/**
 	 * @type {string}
 	 */
@@ -51,12 +57,25 @@
 
 	function onSearch() {}
 
-	onMount(async () => {});
+	onMount(async () => {
+		if (data.services && data.services.length > 0) {
+			currentSevice = data.services[0];
+		}
+		console.log(data);
+	});
 </script>
 
 <div class="m-6">
-	<div class="flex items-center">
-		<Input class="mx-4 max-w-screen-md" placeholder="Search log by keyword" />
+	<div class="mx-4 flex items-center">
+		Service:
+		<Svelecte
+			class="ml-4"
+			options={data.services}
+			searchable={false}
+			resetOnBlur={false}
+			bind:value={currentSevice}
+		></Svelecte>
+		<Input class="mx-4 max-w-screen-md" placeholder="Search log by keyword" bind:value={keyword} />
 		<Button on:click={onSearch}>Search</Button>
 		<div class="mx-6">
 			<DatePicker
@@ -86,4 +105,5 @@
 			</DatePicker>
 		</div>
 	</div>
+	<Separator class="my-8" />
 </div>

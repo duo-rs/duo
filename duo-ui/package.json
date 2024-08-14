@@ -37,6 +37,7 @@
 		"clsx": "^2.1.1",
 		"dayjs": "^1.11.12",
 		"lucide-svelte": "^0.427.0",
+		"svelecte": "^4.2.5",
 		"tailwind-merge": "^2.5.2",
 		"tailwind-variants": "^0.2.1"
 	}
