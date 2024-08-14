@@ -75,7 +75,14 @@
 		return dayjs(date).hour(parseInt(hour)).minute(parseInt(minute)).valueOf();
 	}
 
-	async function onSearch() {
+	function filterableSchema() {
+		let excludedFields = ['message', 'time'];
+		return data.schema.fields.filter(
+			(/** @type {{ name: string; }} */ field) => !excludedFields.includes(field.name)
+		);
+	}
+
+	function queryParams() {
 		let params = new URLSearchParams({
 			service: currentSevice,
 			// start/end should be microseconds
@@ -85,9 +92,27 @@
 		if (keyword) {
 			params.append('keyword', keyword);
 		}
+		return params;
+	}
+
+	async function onSearch() {
+		let params = queryParams();
 		let response = await fetch(`http://localhost:3000/api/logs?${params.toString()}`);
 		if (response.ok) {
 			logs = [...logs, ...(await response.json())];
+		}
+	}
+
+	/**
+	 * @param {string} field
+	 */
+	async function getFieldStats(field) {
+		let params = queryParams();
+		let response = await fetch(
+			`http://localhost:3000/api/logs/stats/${field}?${params.toString()}`
+		);
+		if (response.ok) {
+			return await response.json();
 		}
 	}
 
@@ -140,9 +165,9 @@
 		<Button on:click={onSearch}>Search</Button>
 	</div>
 	<Separator class="my-8" />
-	<Resizable.PaneGroup direction="horizontal" class="py-2 rounded-lg border">
+	<Resizable.PaneGroup direction="horizontal" class="rounded-lg border py-2">
 		<Resizable.Pane defaultSize={18}>
-			{#each data.schema.fields as field}
+			{#each filterableSchema() as field}
 				<Collapsible.Root class="space-y-2">
 					<div class="flex items-center justify-between space-x-4 px-4">
 						<Collapsible.Trigger asChild let:builder>
@@ -154,8 +179,20 @@
 						</Collapsible.Trigger>
 					</div>
 					<Collapsible.Content class="space-y-2">
-                        <div class="px-4">
-                        </div>
+						<div class="px-4">
+							{#await getFieldStats(field.name)}
+								<p>loading...</p>
+							{:then stats}
+								{#each stats as { value, count }}
+									<div class="flex items-center space-x-4">
+										<div>{value}</div>
+										<div>{count}</div>
+									</div>
+								{/each}
+							{:catch error}
+								<p>Error: {error.message}</p>
+							{/await}
+						</div>
 					</Collapsible.Content>
 				</Collapsible.Root>
 			{/each}

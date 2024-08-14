@@ -79,7 +79,7 @@ pub async fn run_web_server(
         .route("/api/services/:service/operations", get(trace::operations))
         .route("/api/logs", get(logs::list))
         .route("/api/logs/schema", get(logs::schema))
-        .route("/api/stats/:field", get(logs::field_stats))
+        .route("/api/logs/stats/:field", get(logs::field_stats))
         .route("/stats", get(self::stats))
         .fallback(fallback)
         .layer(layer);

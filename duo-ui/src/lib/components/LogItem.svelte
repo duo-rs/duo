@@ -1,7 +1,7 @@
 <script>
 	import dayjs from 'dayjs';
-    import { Badge } from "$lib/components/ui/badge/index.js";
-    import { Separator } from '$lib/components/ui/separator';
+	import { Badge } from '$lib/components/ui/badge/index.js';
+	import { Separator } from '$lib/components/ui/separator';
 
 	/**
 	 * @type {string}
@@ -42,18 +42,18 @@
 </script>
 
 <div class="text-md mx-4 my-2 flex flex-row">
-    <div class="flex flex-wrap flex-row grow">
-        <div class="mx-2">{level}</div>
-        <div class="mx-2">{dayjs(time / 1000).format('YYYY-MM-DD HH:mm:ss.SSS')}</div>
-        <div class="mx-2">{message}</div>
-        {#if $$restProps}
-		{#each Object.entries($$restProps) as [key, value]}
-        <div class="mx-2">
-            <span>{key}</span>:<span>{value}</span>
-        </div>
-		{/each}
-        {/if}
-    </div>
-    <Badge class="flex self-end" variant="outline">{process_id}</Badge>
+	<div class="flex grow flex-row flex-wrap">
+		<div class="mx-2">{level}</div>
+		<div class="mx-2">{dayjs(time / 1000).format('YYYY-MM-DD HH:mm:ss.SSS')}</div>
+		<div class="mx-2">{message}</div>
+		{#if $$restProps}
+			{#each Object.entries($$restProps) as [key, value]}
+				<div class="mx-2">
+					<span>{key}</span>:<span>{value}</span>
+				</div>
+			{/each}
+		{/if}
+	</div>
+	<Badge class="flex self-end" variant="outline">{process_id}</Badge>
 </div>
 <Separator />
