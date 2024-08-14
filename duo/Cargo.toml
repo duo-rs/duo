@@ -30,6 +30,7 @@ mime_guess = "2"
 object_store = { version = "0.10.2", features = ["aws"] }
 url = "2.5.2"
 toml = "0.8.19"
+tower-http = { version = "0.5.2", features = ["cors"] }
 
 [dev-dependencies]
 rstest = "0.22"

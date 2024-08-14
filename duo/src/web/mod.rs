@@ -3,7 +3,7 @@ use std::{net::SocketAddr, sync::Arc};
 use axum::{
     body::Body,
     extract::Extension,
-    http::{header, StatusCode, Uri},
+    http::{header, Method, StatusCode, Uri},
     response::{Html, IntoResponse, Response},
     routing::get,
     Router,
@@ -11,6 +11,7 @@ use axum::{
 use parking_lot::RwLock;
 use rust_embed::RustEmbed;
 use tower::ServiceBuilder;
+use tower_http::cors::{Any, CorsLayer};
 
 use crate::MemoryStore;
 
@@ -60,7 +61,14 @@ pub async fn run_web_server(
 ) -> anyhow::Result<()> {
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    let layer = ServiceBuilder::new().layer(Extension(memory_store));
+    let cors = CorsLayer::new()
+        // allow `GET` and `POST` when accessing the resource
+        .allow_methods([Method::GET, Method::POST])
+        // allow requests from any origin
+        .allow_origin(Any);
+    let layer = ServiceBuilder::new()
+        .layer(Extension(memory_store))
+        .layer(cors);
 
     let app = Router::new()
         .route("/", get(|| async { ROOT_PAGE }))
