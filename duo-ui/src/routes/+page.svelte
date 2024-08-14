@@ -8,6 +8,7 @@
 	import { DatePicker } from '@svelte-plugins/datepicker';
 	import { cn } from '$lib/utils';
 	import dayjs from 'dayjs';
+	import LogItem from '$lib/components/LogItem.svelte';
 
 	export const ssr = false;
 
@@ -24,23 +25,27 @@
 	/**
 	 * @type {number}
 	 */
-	let startDate;
+	let startDate = dayjs().subtract(30, 'minute').valueOf();
 	/**
 	 * @type {number}
 	 */
-	let endDate;
+	let endDate = dayjs().valueOf();
 	/**
 	 * @type {string}
 	 */
-	let startDateTime;
+	let startDateTime = dayjs().subtract(30, 'minute').format('HH:mm');
 	/**
 	 * @type {string}
 	 */
-	let endDateTime;
+	let endDateTime = dayjs().format('HH:mm');
 	/**
 	 * @type {number}
 	 */
 	let limit = 20;
+	/**
+	 * @type {Object[]}
+	 */
+	let logs = [];
 
 	let isOpen = false;
 	/**
@@ -55,7 +60,32 @@
 	}
 	const toggleDatePicker = () => (isOpen = !isOpen);
 
-	function onSearch() {}
+	/**
+	 * @param {number} date
+	 * @param {string} time
+	 *
+	 * @returns {number} the timestamps
+	 */
+	function dateTimeToTimestamp(date, time) {
+		let [hour, minute] = time.split(':');
+		return dayjs(date).hour(parseInt(hour)).minute(parseInt(minute)).valueOf();
+	}
+
+	async function onSearch() {
+		let params = new URLSearchParams({
+			service: currentSevice,
+			// start/end should be microseconds
+			start: `${dateTimeToTimestamp(startDate, startDateTime)}000`,
+			end: `${dateTimeToTimestamp(endDate, endDateTime)}000`
+		});
+		if (keyword) {
+			params.append('keyword', keyword);
+		}
+		let response = await fetch(`http://localhost:3000/api/logs?${params.toString()}`);
+		if (response.ok) {
+			logs = [...logs, ...(await response.json())];
+		}
+	}
 
 	onMount(async () => {
 		if (data.services && data.services.length > 0) {
@@ -76,7 +106,6 @@
 			bind:value={currentSevice}
 		></Svelecte>
 		<Input class="mx-4 max-w-screen-md" placeholder="Search log by keyword" bind:value={keyword} />
-		<Button on:click={onSearch}>Search</Button>
 		<div class="mx-6">
 			<DatePicker
 				bind:isOpen
@@ -104,6 +133,10 @@
 				</Button>
 			</DatePicker>
 		</div>
+		<Button on:click={onSearch}>Search</Button>
 	</div>
 	<Separator class="my-8" />
+	{#each logs as log}
+		<LogItem {...log} />
+	{/each}
 </div>
