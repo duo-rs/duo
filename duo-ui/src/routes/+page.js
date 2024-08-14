@@ -10,7 +10,7 @@ const API_URL = "http://localhost:3000";
 
 async function getServices() {
     let response = await fetch(`${API_URL}/api/services`);
-    return (await response.json()).data;
+    return (await response.json()).data.sort();
 
 }
 

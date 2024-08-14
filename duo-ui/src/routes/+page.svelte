@@ -1,9 +1,13 @@
 <script>
 	import Svelecte from 'svelecte';
 	import CalendarIcon from 'lucide-svelte/icons/calendar';
+	import ChevronsUpDown from 'lucide-svelte/icons/chevrons-up-down';
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
+	import { ScrollArea } from '$lib/components/ui/scroll-area';
+	import * as Collapsible from '$lib/components/ui/collapsible';
+	import * as Resizable from '$lib/components/ui/resizable';
 	import { onMount } from 'svelte';
 	import { DatePicker } from '@svelte-plugins/datepicker';
 	import { cn } from '$lib/utils';
@@ -136,7 +140,33 @@
 		<Button on:click={onSearch}>Search</Button>
 	</div>
 	<Separator class="my-8" />
-	{#each logs as log}
-		<LogItem {...log} />
-	{/each}
+	<Resizable.PaneGroup direction="horizontal" class="py-2 rounded-lg border">
+		<Resizable.Pane defaultSize={18}>
+			{#each data.schema.fields as field}
+				<Collapsible.Root class="space-y-2">
+					<div class="flex items-center justify-between space-x-4 px-4">
+						<Collapsible.Trigger asChild let:builder>
+							<div>{field.name}</div>
+							<Button builders={[builder]} variant="ghost" size="sm" class="w-9 p-0">
+								<ChevronsUpDown class="h-4 w-4" />
+								<span class="sr-only">Toggle</span>
+							</Button>
+						</Collapsible.Trigger>
+					</div>
+					<Collapsible.Content class="space-y-2">
+                        <div class="px-4">
+                        </div>
+					</Collapsible.Content>
+				</Collapsible.Root>
+			{/each}
+		</Resizable.Pane>
+		<Resizable.Handle />
+		<Resizable.Pane>
+			<ScrollArea class="h-[75vh]">
+				{#each logs as log}
+					<LogItem {...log} />
+				{/each}
+			</ScrollArea>
+		</Resizable.Pane>
+	</Resizable.PaneGroup>
 </div>
