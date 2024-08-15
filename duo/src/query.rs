@@ -30,34 +30,25 @@ impl QueryEngine {
 
     pub fn query_span(&self, expr: Expr) -> Query {
         let guard = self.memory_store.read();
-        Query {
-            table_name: "span",
-            memtable: MemTable::try_new(
-                schema::get_span_schema(),
-                vec![guard.span_batches.clone()],
-            )
-            .expect("Create Memtable failed"),
+        Query::new(
+            "span",
             expr,
-            start: None,
-            end: None,
-            sort_expr: Vec::new(),
-        }
+            MemTable::try_new(schema::get_span_schema(), vec![guard.span_batches.clone()])
+                .expect("Create Memtable failed"),
+        )
     }
 
     pub fn query_log(&self, expr: Expr) -> Query {
         let guard = self.memory_store.read();
-        Query {
-            table_name: "log",
-            memtable: MemTable::try_new(
+        Query::new(
+            "log",
+            expr,
+            MemTable::try_new(
                 Arc::clone(&guard.log_schema),
                 vec![guard.log_batches.clone()],
             )
             .expect("Create Memtable failed"),
-            expr,
-            start: None,
-            end: None,
-            sort_expr: Vec::new(),
-        }
+        )
     }
 }
 
@@ -68,6 +59,8 @@ pub struct Query {
     start: Option<OffsetDateTime>,
     end: Option<OffsetDateTime>,
     sort_expr: Vec<Expr>,
+    limit: Option<usize>,
+    skip: usize,
 }
 
 pub struct AggregateQuery {
@@ -77,8 +70,29 @@ pub struct AggregateQuery {
 }
 
 impl Query {
+    fn new(table_name: &'static str, expr: Expr, memtable: MemTable) -> Self {
+        Self {
+            table_name,
+            expr,
+            memtable,
+            start: None,
+            end: None,
+            sort_expr: Vec::new(),
+            limit: None,
+            skip: 0,
+        }
+    }
+
     pub fn range(self, start: Option<OffsetDateTime>, end: Option<OffsetDateTime>) -> Self {
         Self { start, end, ..self }
+    }
+
+    pub fn limit(self, skip: usize, limit: Option<usize>) -> Self {
+        Self {
+            skip,
+            limit,
+            ..self
+        }
     }
 
     async fn df(self) -> Result<DataFrame> {
@@ -94,7 +108,7 @@ impl Query {
             );
             df = df.union(pq.df(self.table_name).await?)?;
         }
-        Ok(df.filter(self.expr)?)
+        Ok(df.filter(self.expr)?.limit(self.skip, self.limit)?)
     }
 
     pub fn sort(self, sort_expr: Vec<Expr>) -> Self {

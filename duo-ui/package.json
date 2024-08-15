@@ -39,6 +39,7 @@
 		"lucide-svelte": "^0.427.0",
 		"paneforge": "^0.0.5",
 		"svelecte": "^4.2.5",
+		"svelte-infinite-loading": "^1.4.0",
 		"tailwind-merge": "^2.5.2",
 		"tailwind-variants": "^0.2.1"
 	}

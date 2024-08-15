@@ -22,6 +22,8 @@ pub(super) struct QueryParameters {
     service: String,
     #[serde(default, deserialize_with = "deser::option_ignore_error")]
     limit: Option<usize>,
+    #[serde(default, deserialize_with = "deser::option_ignore_error")]
+    skip: Option<usize>,
     #[serde(default, deserialize_with = "deser::option_miscrosecond")]
     start: Option<OffsetDateTime>,
     #[serde(default, deserialize_with = "deser::option_miscrosecond")]
@@ -96,6 +98,7 @@ pub(super) async fn list(
     let total_logs = query_engine
         .query_log(p.expr())
         .range(p.start, p.end)
+        .limit(p.skip.unwrap_or(0), p.limit)
         .collect::<Log>()
         .await
         .unwrap_or_default();

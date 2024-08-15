@@ -8,14 +8,13 @@
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import * as Collapsible from '$lib/components/ui/collapsible';
 	import * as Resizable from '$lib/components/ui/resizable';
+	import InfiniteLoading from 'svelte-infinite-loading';
 	import { onMount } from 'svelte';
 	import { DatePicker } from '@svelte-plugins/datepicker';
 	import { cn } from '$lib/utils';
 	import dayjs from 'dayjs';
 	import LogItem from '$lib/components/LogItem.svelte';
 	import Datatype from '$lib/components/Datatype.svelte';
-
-	export const ssr = false;
 
 	/** @type {import('./$types').PageData} */
 	export let data;
@@ -44,14 +43,10 @@
 	 */
 	let endDateTime = dayjs().format('HH:mm');
 	/**
-	 * @type {number}
-	 */
-	let limit = 20;
-	/**
 	 * @type {Object[]}
 	 */
 	let logs = [];
-
+	let limit = 50;
 	let isOpen = false;
 	/**
 	 * @type {string}
@@ -63,6 +58,7 @@
 			pickedDateTimeRange = `${dayjs(startDate).format('MMM DD,YYYY')} ${startDateTime} - ${dayjs(endDate).format('MMM DD,YYYY')} ${endDateTime}`;
 		}
 	}
+
 	const toggleDatePicker = () => (isOpen = !isOpen);
 
 	/**
@@ -86,6 +82,8 @@
 	function queryParams() {
 		let params = new URLSearchParams({
 			service: currentSevice,
+			limit: `${limit}`,
+			skip: `${logs.length}`,
 			// start/end should be microseconds
 			start: `${dateTimeToTimestamp(startDate, startDateTime)}000`,
 			end: `${dateTimeToTimestamp(endDate, endDateTime)}000`
@@ -96,12 +94,19 @@
 		return params;
 	}
 
-	async function search() {
+	async function fetchLogs() {
 		let params = queryParams();
 		let response = await fetch(`http://localhost:3000/api/logs?${params.toString()}`);
 		if (response.ok) {
-			logs = await response.json();
+			return await response.json();
+		} else {
+			throw new Error(response.statusText);
 		}
+	}
+
+	async function search() {
+		logs = [];
+		logs = await fetchLogs();
 	}
 
 	/**
@@ -129,6 +134,25 @@
 		};
 	}
 
+	/**
+	 * @param event {import('svelte-infinite-loading').InfiniteEvent}
+	 */
+	async function infiniteHandler({ detail: { loaded, complete, error } }) {
+		try {
+			let newBatch = await fetchLogs();
+			console.log('infiniteHandler, len:', newBatch.length);
+			logs = [...logs, ...newBatch];
+			if (newBatch.length < limit) {
+				complete();
+			} else {
+				loaded();
+			}
+		} catch (e) {
+			error();
+			console.error(e);
+		}
+	}
+
 	onMount(async () => {
 		if (data.services && data.services.length > 0) {
 			currentSevice = data.services[0];
@@ -146,7 +170,7 @@
 			searchable={false}
 			resetOnBlur={false}
 			bind:value={currentSevice}
-            on:change={search}
+			on:change={search}
 		></Svelecte>
 		<Input class="mx-4 max-w-screen-md" placeholder="Search log by keyword" bind:value={keyword} />
 		<div class="mx-6">
@@ -212,11 +236,16 @@
 		</Resizable.Pane>
 		<Resizable.Handle />
 		<Resizable.Pane defaultSize={80} minSize={48}>
-			<ScrollArea class="h-[75vh]">
-				{#each logs as log}
-					<LogItem {...log} />
-				{/each}
-			</ScrollArea>
+			{#if logs.length > 0}
+				<ScrollArea class="h-[75vh]">
+					{#each logs as log}
+						<LogItem {...log} />
+					{/each}
+					<InfiniteLoading on:infinite={infiniteHandler} />
+				</ScrollArea>
+			{:else}
+				<p class="text-center">No logs found.</p>
+			{/if}
 		</Resizable.Pane>
 	</Resizable.PaneGroup>
 </div>

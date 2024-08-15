@@ -61,7 +61,7 @@ struct Args {
     /// This mode suit for local development.
     memory_mode: bool,
     /// Collect log and span of duo itself.
-    #[arg(long)]
+    #[arg(short = 's', long)]
     collect_self: bool,
     /// Configuration file path.
     #[arg(short, long)]
@@ -102,7 +102,7 @@ async fn main() -> Result<()> {
             // Ignore "duo_internal" event to avoid recursively report event to duo-server
             metadata.target() != "duo_internal"
         }));
-        println!("Collect self spans and logs...");
+        tracing::debug!("Collect self spans and logs...");
         Some(layer)
     } else {
         None
@@ -110,8 +110,8 @@ async fn main() -> Result<()> {
     tracing_subscriber::registry()
         .with(fmt::layer())
         .with(duo_layer)
-        // .with(Targets::new().with_target("duo", Level::DEBUG))
-        .with(Targets::new().with_default(Level::DEBUG))
+        .with(Targets::new().with_target("duo", Level::DEBUG))
+        // .with(Targets::new().with_default(Level::DEBUG))
         .init();
 
     run_web_server(memory_store, web_port).await?;
