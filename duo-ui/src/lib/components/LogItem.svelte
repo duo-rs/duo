@@ -4,6 +4,11 @@
 	import { Separator } from '$lib/components/ui/separator';
 
 	/**
+	 * Search keyword for matching
+	 * @type {string}
+	 */
+	export let keyword;
+	/**
 	 * @type {string}
 	 */
 	export let message;
@@ -73,6 +78,15 @@
 			...$$restProps
 		};
 	}
+
+	/**
+	 * @param {string} text
+	 */
+	function matchKeyword(text) {
+		if (!keyword) return text;
+		const regex = new RegExp(`(${keyword})`, 'gi');
+		return text.replace(regex, '<span class="rounded py-1 bg-[#fffe55]">$1</span>');
+	}
 </script>
 
 <button
@@ -83,7 +97,7 @@
 		<div class="text-slate-500">{dayjs(time / 1000).format('YYYY-MM-DD HH:mm:ss.SSS')}</div>
 		<div class="flex" style:color={levelColor}>
 			<div class="mx-2 w-10"><code>{level}</code></div>
-			<div class="mx-2">{message}</div>
+			<div class="mx-2">{@html matchKeyword(message)}</div>
 		</div>
 		{#if $$restProps}
 			{#each Object.entries($$restProps) as [key, value]}

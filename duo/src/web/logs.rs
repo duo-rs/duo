@@ -74,6 +74,7 @@ pub(super) async fn field_stats(
         .range(p.start, p.end)
         // sort by count desc
         .sort(vec![col("count").sort(false, false)])
+        .limit(p.skip.unwrap_or(0), p.limit.or(Some(20)))
         .aggregate(
             vec![c.clone().alias("value")],
             vec![count(c).alias("count")],

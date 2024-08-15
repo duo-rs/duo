@@ -146,6 +146,15 @@
 		}
 	}
 
+	/**
+	 * @param {KeyboardEvent} event
+	 */
+	function onKeydown(event) {
+		if (event.key === 'Enter') {
+			search();
+		}
+	}
+
 	onMount(async () => {
 		if (!$searchUiConfig.currentSevice && data.services && data.services.length > 0) {
 			$searchUiConfig.currentSevice = data.services[0];
@@ -169,6 +178,7 @@
 			class="mx-4 max-w-screen-md"
 			placeholder="Search log by keyword"
 			bind:value={$searchUiConfig.keyword}
+			on:keydown={onKeydown}
 		/>
 		<div class="mx-6">
 			<DatePicker
@@ -236,7 +246,7 @@
 			{#if logs.length > 0}
 				<ScrollArea class="h-[75vh]">
 					{#each logs as log}
-						<LogItem {...log} />
+						<LogItem {...log} keyword={$searchUiConfig.keyword} />
 					{/each}
 					<InfiniteLoading on:infinite={infiniteHandler} />
 				</ScrollArea>
