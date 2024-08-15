@@ -15,17 +15,10 @@
 	import dayjs from 'dayjs';
 	import LogItem from '$lib/components/LogItem.svelte';
 	import Datatype from '$lib/components/Datatype.svelte';
+	import { searchUiConfig } from '../stores/search-ui';
 
 	/** @type {import('./$types').PageData} */
 	export let data;
-	/**
-	 * @type {string}
-	 */
-	let currentSevice;
-	/**
-	 * @type {string}
-	 */
-	let keyword;
 	/**
 	 * @type {number}
 	 */
@@ -81,15 +74,15 @@
 
 	function queryParams() {
 		let params = new URLSearchParams({
-			service: currentSevice,
+			service: $searchUiConfig.currentSevice,
 			limit: `${limit}`,
 			skip: `${logs.length}`,
 			// start/end should be microseconds
 			start: `${dateTimeToTimestamp(startDate, startDateTime)}000`,
 			end: `${dateTimeToTimestamp(endDate, endDateTime)}000`
 		});
-		if (keyword) {
-			params.append('keyword', keyword);
+		if ($searchUiConfig.keyword) {
+			params.append('keyword', $searchUiConfig.keyword);
 		}
 		return params;
 	}
@@ -154,8 +147,8 @@
 	}
 
 	onMount(async () => {
-		if (data.services && data.services.length > 0) {
-			currentSevice = data.services[0];
+		if (!$searchUiConfig.currentSevice && data.services && data.services.length > 0) {
+			$searchUiConfig.currentSevice = data.services[0];
 		}
 		await search();
 	});
@@ -169,10 +162,14 @@
 			options={data.services}
 			searchable={false}
 			resetOnBlur={false}
-			bind:value={currentSevice}
+			bind:value={$searchUiConfig.currentSevice}
 			on:change={search}
 		></Svelecte>
-		<Input class="mx-4 max-w-screen-md" placeholder="Search log by keyword" bind:value={keyword} />
+		<Input
+			class="mx-4 max-w-screen-md"
+			placeholder="Search log by keyword"
+			bind:value={$searchUiConfig.keyword}
+		/>
 		<div class="mx-6">
 			<DatePicker
 				bind:isOpen

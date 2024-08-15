@@ -15,7 +15,7 @@ use crate::{schema, Log, MemoryStore};
 
 use super::deser;
 
-const DEFAUT_LOG_LIMIT: usize = 100;
+const DEFAUT_LOG_LIMIT: usize = 50;
 
 #[derive(Debug, Deserialize)]
 pub(super) struct QueryParameters {
@@ -93,14 +93,13 @@ pub(super) async fn list(
     Query(p): Query<QueryParameters>,
     Extension(memory_store): Extension<Arc<RwLock<MemoryStore>>>,
 ) -> impl IntoResponse {
-    let limit = p.limit.unwrap_or(DEFAUT_LOG_LIMIT);
     let query_engine = QueryEngine::new(memory_store);
     let total_logs = query_engine
         .query_log(p.expr())
         .range(p.start, p.end)
-        .limit(p.skip.unwrap_or(0), p.limit)
+        .limit(p.skip.unwrap_or(0), p.limit.or(Some(DEFAUT_LOG_LIMIT)))
         .collect::<Log>()
         .await
         .unwrap_or_default();
-    Json(total_logs.into_iter().take(limit).collect::<Vec<_>>())
+    Json(total_logs.into_iter().collect::<Vec<_>>())
 }
