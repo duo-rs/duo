@@ -76,7 +76,7 @@
 	}
 
 	function filterableSchema() {
-		let excludedFields = ['message', 'time'];
+		let excludedFields = ['message', 'time', 'line'];
 		return data.schema.fields.filter(
 			(/** @type {{ name: string; }} */ field) => !excludedFields.includes(field.name)
 		);

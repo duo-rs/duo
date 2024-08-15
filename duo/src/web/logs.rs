@@ -62,8 +62,7 @@ pub(super) async fn field_stats(
 
     #[derive(Serialize, Deserialize)]
     struct FieldStats {
-        // FIXME: need support int, bool
-        value: String,
+        value: Option<serde_json::Value>,
         count: i64,
     }
     let query_engine = QueryEngine::new(memory_store);
@@ -79,7 +78,11 @@ pub(super) async fn field_stats(
         )
         .collect::<FieldStats>()
         .await
-        .unwrap();
+        .unwrap()
+        .into_iter()
+        // Filter out null value
+        .filter(|s| s.value.is_some())
+        .collect::<Vec<_>>();
     Json(stats).into_response()
 }
 
