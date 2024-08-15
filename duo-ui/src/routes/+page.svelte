@@ -96,11 +96,11 @@
 		return params;
 	}
 
-	async function onSearch() {
+	async function search() {
 		let params = queryParams();
 		let response = await fetch(`http://localhost:3000/api/logs?${params.toString()}`);
 		if (response.ok) {
-			logs = [...logs, ...(await response.json())];
+			logs = await response.json();
 		}
 	}
 
@@ -119,9 +119,7 @@
 			items = await response.json();
 			for (let item of items) {
 				total += item.count;
-				if (item.count > max) {
-					max = item.count;
-				}
+				max = Math.max(max, item.count);
 			}
 		}
 		return {
@@ -135,7 +133,7 @@
 		if (data.services && data.services.length > 0) {
 			currentSevice = data.services[0];
 		}
-		console.log(data);
+		await search();
 	});
 </script>
 
@@ -148,6 +146,7 @@
 			searchable={false}
 			resetOnBlur={false}
 			bind:value={currentSevice}
+            on:change={search}
 		></Svelecte>
 		<Input class="mx-4 max-w-screen-md" placeholder="Search log by keyword" bind:value={keyword} />
 		<div class="mx-6">
@@ -177,46 +176,42 @@
 				</Button>
 			</DatePicker>
 		</div>
-		<Button on:click={onSearch}>Search</Button>
+		<Button on:click={search}>Search</Button>
 	</div>
 	<Separator class="my-8" />
 	<Resizable.PaneGroup direction="horizontal" class="rounded-lg border py-2">
-		<Resizable.Pane defaultSize={18}>
-			<h2 class="px-4 text-center text-lg font-bold">Fields</h2>
+		<Resizable.Pane defaultSize={18} minSize={12} maxSize={24}>
+			<h2 class="px-4 py-2 text-center text-lg font-bold">Fields</h2>
 			{#each filterableFields() as field}
-				<Collapsible.Root class="space-y-2 text-sm">
-					<div class="space-x-4 px-4">
-						<Collapsible.Trigger class="w-full">
-							<div class="flex items-center py-1 text-slate-500 hover:bg-gray-100">
-								<code class="flex grow">
-									{field.name}
-								</code>
-								<Datatype type={field.data_type} />
-							</div>
-						</Collapsible.Trigger>
-					</div>
-					<Collapsible.Content class="space-y-2">
-						<div class="px-4">
-							{#await getFieldStats(field.name)}
-								<p>loading...</p>
-							{:then stats}
-								{#each stats.items as { value, count }}
-									<div class="flex items-center space-x-4 text-sm text-gray-400">
-										<code class="flex grow">{value}</code>
-										<code>{count}</code>
-									</div>
-									<Progress value={count} max={stats.max} class="h-2 w-full" />
-								{/each}
-							{:catch error}
-								<p>Error: {error.message}</p>
-							{/await}
+				<Collapsible.Root class="my-1 text-sm">
+					<Collapsible.Trigger class="w-full">
+						<div class="flex items-center px-4 py-1 text-slate-500 hover:bg-gray-100">
+							<code class="flex grow">
+								{field.name}
+							</code>
+							<Datatype type={field.data_type} />
 						</div>
+					</Collapsible.Trigger>
+					<Collapsible.Content class="px-4">
+						{#await getFieldStats(field.name)}
+							<p>loading...</p>
+						{:then stats}
+							{#each stats.items as { value, count }}
+								<div class="flex items-center text-xs text-gray-400">
+									<code class="flex grow text-nowrap">{value}</code>
+									<code class="w-min-[10px]">{count}</code>
+								</div>
+								<Progress value={count} max={stats.max} class="my-1 h-1 w-full" />
+							{/each}
+						{:catch error}
+							<p>Error: {error.message}</p>
+						{/await}
 					</Collapsible.Content>
 				</Collapsible.Root>
 			{/each}
 		</Resizable.Pane>
 		<Resizable.Handle />
-		<Resizable.Pane>
+		<Resizable.Pane defaultSize={80} minSize={48}>
 			<ScrollArea class="h-[75vh]">
 				{#each logs as log}
 					<LogItem {...log} />

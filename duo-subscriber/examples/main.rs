@@ -2,14 +2,14 @@ use std::time::Duration;
 
 use duo_subscriber::DuoLayer;
 use tonic::transport::Uri;
-use tracing::{debug, error, Level};
+use tracing::{debug, error, info, warn, Level};
 use tracing_subscriber::{
     self, filter::Targets, fmt, layer::SubscriberExt, util::SubscriberInitExt,
 };
 
 #[tracing::instrument]
 fn foo() {
-    debug!(test = true, "hello foo!");
+    info!(test = true, "hello foo!");
     bar();
     debug!("called bar!");
     foz();
@@ -22,7 +22,7 @@ fn bar() {
 
 #[tracing::instrument]
 fn baz() {
-    debug!("hello baz!");
+    warn!("hello baz!");
 }
 
 #[tracing::instrument]
@@ -46,7 +46,7 @@ async fn main() {
         )
         .init();
 
-    tracing::debug!("Bootstrap...");
+    tracing::info!("Bootstrap...");
     foo();
     tokio::time::sleep(Duration::from_secs(1)).await;
 }

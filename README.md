@@ -84,9 +84,9 @@ Run your application then check the http://127.0.0.1:3000 to see the tracing dat
 
 - [x] Support tracing diagnosing with Jaeger UI.
 
-- [ ] Build duo web UI.
+- [x] Build duo web UI.
 
-- [ ] Support logging diagnosing.
+- [x] Support logging diagnosing.
 
 - [x] Support arrow-ipc WAL.
 
