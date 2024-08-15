@@ -1,7 +1,7 @@
 <script>
 	import Svelecte from 'svelecte';
 	import CalendarIcon from 'lucide-svelte/icons/calendar';
-	import ChevronsUpDown from 'lucide-svelte/icons/chevrons-up-down';
+	import { Progress } from '$lib/components/ui/progress';
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
@@ -108,13 +108,27 @@
 	 * @param {string} field
 	 */
 	async function getFieldStats(field) {
+		let items = [];
+		let max = 0;
+		let total = 0;
 		let params = queryParams();
 		let response = await fetch(
 			`http://localhost:3000/api/logs/stats/${field}?${params.toString()}`
 		);
 		if (response.ok) {
-			return await response.json();
+			items = await response.json();
+			for (let item of items) {
+				total += item.count;
+				if (item.count > max) {
+					max = item.count;
+				}
+			}
 		}
+		return {
+			total,
+			max,
+			items
+		};
 	}
 
 	onMount(async () => {
@@ -173,13 +187,11 @@
 				<Collapsible.Root class="space-y-2 text-sm">
 					<div class="space-x-4 px-4">
 						<Collapsible.Trigger class="w-full">
-							<div class="flex items-center p-1 text-slate-500 hover:bg-gray-100">
-								<span class="flex grow">
+							<div class="flex items-center py-1 text-slate-500 hover:bg-gray-100">
+								<code class="flex grow">
 									{field.name}
-								</span>
-								<span class="mx-1">
-									<Datatype type={field.data_type} />
-								</span>
+								</code>
+								<Datatype type={field.data_type} />
 							</div>
 						</Collapsible.Trigger>
 					</div>
@@ -188,11 +200,12 @@
 							{#await getFieldStats(field.name)}
 								<p>loading...</p>
 							{:then stats}
-								{#each stats as { value, count }}
-									<div class="flex items-center space-x-4">
-										<div>{value}</div>
-										<div>{count}</div>
+								{#each stats.items as { value, count }}
+									<div class="flex items-center space-x-4 text-sm text-gray-400">
+										<code class="flex grow">{value}</code>
+										<code>{count}</code>
 									</div>
+									<Progress value={count} max={stats.max} class="h-2 w-full" />
 								{/each}
 							{:catch error}
 								<p>Error: {error.message}</p>
