@@ -13,6 +13,7 @@
 	import { cn } from '$lib/utils';
 	import dayjs from 'dayjs';
 	import LogItem from '$lib/components/LogItem.svelte';
+	import Datatype from '$lib/components/Datatype.svelte';
 
 	export const ssr = false;
 
@@ -75,7 +76,7 @@
 		return dayjs(date).hour(parseInt(hour)).minute(parseInt(minute)).valueOf();
 	}
 
-	function filterableSchema() {
+	function filterableFields() {
 		let excludedFields = ['message', 'time', 'line'];
 		return data.schema.fields.filter(
 			(/** @type {{ name: string; }} */ field) => !excludedFields.includes(field.name)
@@ -167,15 +168,19 @@
 	<Separator class="my-8" />
 	<Resizable.PaneGroup direction="horizontal" class="rounded-lg border py-2">
 		<Resizable.Pane defaultSize={18}>
-			{#each filterableSchema() as field}
-				<Collapsible.Root class="space-y-2">
-					<div class="flex items-center justify-between space-x-4 px-4">
-						<Collapsible.Trigger asChild let:builder>
-							<div>{field.name}</div>
-							<Button builders={[builder]} variant="ghost" size="sm" class="w-9 p-0">
-								<ChevronsUpDown class="h-4 w-4" />
-								<span class="sr-only">Toggle</span>
-							</Button>
+			<h2 class="px-4 text-center text-lg font-bold">Fields</h2>
+			{#each filterableFields() as field}
+				<Collapsible.Root class="space-y-2 text-sm">
+					<div class="space-x-4 px-4">
+						<Collapsible.Trigger class="w-full">
+							<div class="flex items-center p-1 text-slate-500 hover:bg-gray-100">
+								<span class="flex grow">
+									{field.name}
+								</span>
+								<span class="mx-1">
+									<Datatype type={field.data_type} />
+								</span>
+							</div>
 						</Collapsible.Trigger>
 					</div>
 					<Collapsible.Content class="space-y-2">
