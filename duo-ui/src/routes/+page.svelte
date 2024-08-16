@@ -9,13 +9,18 @@
 	import * as Collapsible from '$lib/components/ui/collapsible';
 	import * as Resizable from '$lib/components/ui/resizable';
 	import InfiniteLoading from 'svelte-infinite-loading';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { DatePicker } from '@svelte-plugins/datepicker';
 	import { cn } from '$lib/utils';
 	import dayjs from 'dayjs';
 	import LogItem from '$lib/components/LogItem.svelte';
 	import Datatype from '$lib/components/Datatype.svelte';
-	import { searchUiConfig } from '../stores/search-ui';
+	import { writable } from 'svelte/store';
+
+	const searchUi = writable(JSON.parse(localStorage.getItem('config-log-search-ui') || '{}'));
+	let searchUiUnsubscribe = searchUi.subscribe((config) => {
+		localStorage.setItem('config-log-search-ui', JSON.stringify(config));
+	});
 
 	/** @type {import('./$types').PageData} */
 	export let data;
@@ -74,15 +79,15 @@
 
 	function queryParams() {
 		let params = new URLSearchParams({
-			service: $searchUiConfig.currentSevice,
+			service: $searchUi.currentSevice,
 			limit: `${limit}`,
 			skip: `${logs.length}`,
 			// start/end should be microseconds
 			start: `${dateTimeToTimestamp(startDate, startDateTime)}000`,
 			end: `${dateTimeToTimestamp(endDate, endDateTime)}000`
 		});
-		if ($searchUiConfig.keyword) {
-			params.append('keyword', $searchUiConfig.keyword);
+		if ($searchUi.keyword) {
+			params.append('keyword', $searchUi.keyword);
 		}
 		return params;
 	}
@@ -156,10 +161,14 @@
 	}
 
 	onMount(async () => {
-		if (!$searchUiConfig.currentSevice && data.services && data.services.length > 0) {
-			$searchUiConfig.currentSevice = data.services[0];
+		if (!$searchUi.currentSevice && data.services && data.services.length > 0) {
+			$searchUi.currentSevice = data.services[0];
 		}
 		await search();
+	});
+
+	onDestroy(() => {
+		searchUiUnsubscribe();
 	});
 </script>
 
@@ -171,13 +180,13 @@
 			options={data.services}
 			searchable={false}
 			resetOnBlur={false}
-			bind:value={$searchUiConfig.currentSevice}
+			bind:value={$searchUi.currentSevice}
 			on:change={search}
 		></Svelecte>
 		<Input
 			class="mx-4 max-w-screen-md"
 			placeholder="Search log by keyword"
-			bind:value={$searchUiConfig.keyword}
+			bind:value={$searchUi.keyword}
 			on:keydown={onKeydown}
 		/>
 		<div class="mx-6">
@@ -246,7 +255,7 @@
 			{#if logs.length > 0}
 				<ScrollArea class="h-[75vh]">
 					{#each logs as log}
-						<LogItem {...log} keyword={$searchUiConfig.keyword} />
+						<LogItem {...log} keyword={$searchUi.keyword} />
 					{/each}
 					<InfiniteLoading on:infinite={infiniteHandler} />
 				</ScrollArea>

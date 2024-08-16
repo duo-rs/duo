@@ -98,6 +98,7 @@ pub(super) async fn list(
     let total_logs = query_engine
         .query_log(p.expr())
         .range(p.start, p.end)
+        .sort(vec![col("time").sort(false, false)])
         .limit(p.skip.unwrap_or(0), p.limit.or(Some(DEFAUT_LOG_LIMIT)))
         .collect::<Log>()
         .await
