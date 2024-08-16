@@ -4,7 +4,7 @@ use axum::{
     body::Body,
     extract::Extension,
     http::{header, Method, StatusCode, Uri},
-    response::{Html, IntoResponse, Response},
+    response::{IntoResponse, Response},
     routing::get,
     Router,
 };
@@ -21,13 +21,10 @@ pub mod serialize;
 mod services;
 mod trace;
 
-// Frontend HTML page.
-static INDEX_ROOT_PAGE: Html<&'static str> = Html(include_str!("../../ui/index.html"));
-static TRACE_ROOT_PAGE: Html<&'static str> = Html(include_str!("../../ui/trace.html"));
 pub struct JaegerData<I: IntoIterator>(pub I);
 
 #[derive(RustEmbed)]
-#[folder = "ui/static"]
+#[folder = "ui"]
 struct UiAssets;
 
 pub struct StaticFile<T>(pub T);
@@ -39,10 +36,16 @@ where
     fn into_response(self) -> Response {
         let path = self.0.into();
 
-        match UiAssets::get(path.as_str()) {
+        let new_path = match path.as_ref() {
+            "" | "/" => "index.html",
+            p if p.starts_with("trace") => "trace.html",
+            p => p,
+        };
+        // println!("path: {}, new_path: {}", path, new_path);
+        match UiAssets::get(new_path) {
             Some(content) => {
                 let body = Body::from(content.data);
-                let mime = mime_guess::from_path(path).first_or_octet_stream();
+                let mime = mime_guess::from_path(new_path).first_or_octet_stream();
                 Response::builder()
                     .header(header::CONTENT_TYPE, mime.as_ref())
                     .body(body)
@@ -72,9 +75,7 @@ pub async fn run_web_server(
         .layer(cors);
 
     let app = Router::new()
-        .route("/", get(|| async { INDEX_ROOT_PAGE }))
-        .route("/trace", get(|| async { TRACE_ROOT_PAGE }))
-        .nest_service("/static", get(static_handler))
+        .nest_service("/", get(static_handler))
         .route("/api/traces", get(trace::list))
         .route("/api/traces/:id", get(trace::get_by_id))
         .route("/api/services", get(trace::services))
@@ -83,7 +84,6 @@ pub async fn run_web_server(
         .route("/api/logs/schema", get(logs::schema))
         .route("/api/logs/stats/:field", get(logs::field_stats))
         .route("/stats", get(self::stats))
-        .fallback(fallback)
         .layer(layer);
 
     println!("Web server listening on http://{}", addr);
@@ -93,21 +93,6 @@ pub async fn run_web_server(
 
 async fn static_handler(uri: Uri) -> impl IntoResponse {
     StaticFile(uri.path().trim_start_matches('/').to_string())
-}
-
-async fn fallback(uri: Uri) -> impl IntoResponse {
-    let path = uri.path();
-    if path.starts_with("/api") || path.starts_with("/static") {
-        // For those routes, we simply return 404 text.
-        (StatusCode::NOT_FOUND, "404 Not Found").into_response()
-    } else if path.starts_with("/trace") {
-        // Due to the frontend is a SPA (Single Page Application),
-        // it has own frontend routes, we should return the ROOT PAGE
-        // to avoid frontend route 404.
-        (StatusCode::TEMPORARY_REDIRECT, TRACE_ROOT_PAGE).into_response()
-    } else {
-        (StatusCode::TEMPORARY_REDIRECT, INDEX_ROOT_PAGE).into_response()
-    }
 }
 
 #[tracing::instrument]
