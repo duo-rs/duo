@@ -1,22 +1,14 @@
+import { api } from '$lib/api';
+
 export const ssr = false;
 
-/** @type {import('./$types').PageLoad} */
+/** 
+ * @type {import('./$types').PageLoad} 
+ * @return {Promise<{services: Array<{}>, schema: {fields: any}}>}
+ */
 export async function load() {
     return {
-        services: await getServices(),
-        schema: await getLogSchema(),
+        services: await api.getServices(),
+        schema: await api.getSchema(),
     };
-}
-
-const API_URL = "http://localhost:3000";
-
-async function getServices() {
-    let response = await fetch(`${API_URL}/api/services`);
-    return (await response.json()).data.sort();
-
-}
-
-async function getLogSchema() {
-    let response = await fetch(`${API_URL}/api/logs/schema`);
-    return (await response.json());
 }

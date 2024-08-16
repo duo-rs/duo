@@ -16,6 +16,7 @@
 	import LogItem from '$lib/components/LogItem.svelte';
 	import Datatype from '$lib/components/Datatype.svelte';
 	import { writable } from 'svelte/store';
+	import { api } from '$lib/api';
 
 	const searchUi = writable(JSON.parse(localStorage.getItem('config-log-search-ui') || '{}'));
 	let searchUiUnsubscribe = searchUi.subscribe((config) => {
@@ -92,38 +93,21 @@
 		return params;
 	}
 
-	async function fetchLogs() {
-		let params = queryParams();
-		let response = await fetch(`http://localhost:3000/api/logs?${params.toString()}`);
-		if (response.ok) {
-			return await response.json();
-		} else {
-			throw new Error(response.statusText);
-		}
-	}
-
 	async function search() {
 		logs = [];
-		logs = await fetchLogs();
+		logs = await api.searchLogs(queryParams());
 	}
 
 	/**
 	 * @param {string} field
 	 */
 	async function getFieldStats(field) {
-		let items = [];
 		let max = 0;
 		let total = 0;
-		let params = queryParams();
-		let response = await fetch(
-			`http://localhost:3000/api/logs/stats/${field}?${params.toString()}`
-		);
-		if (response.ok) {
-			items = await response.json();
-			for (let item of items) {
-				total += item.count;
-				max = Math.max(max, item.count);
-			}
+		let items = await api.getFieldStats(field, queryParams());
+		for (let item of items) {
+			total += item.count;
+			max = Math.max(max, item.count);
 		}
 		return {
 			total,
@@ -133,11 +117,11 @@
 	}
 
 	/**
-	 * @param event {import('svelte-infinite-loading').InfiniteEvent}
+	 * @param {import('svelte-infinite-loading').InfiniteEvent} event
 	 */
 	async function infiniteHandler({ detail: { loaded, complete, error } }) {
 		try {
-			let newBatch = await fetchLogs();
+			let newBatch = await api.searchLogs(queryParams());
 			console.log('infiniteHandler, len:', newBatch.length);
 			logs = [...logs, ...newBatch];
 			if (newBatch.length < limit) {
