@@ -22,7 +22,8 @@ mod services;
 mod trace;
 
 // Frontend HTML page.
-static ROOT_PAGE: Html<&'static str> = Html(include_str!("../../ui/index.html"));
+static INDEX_ROOT_PAGE: Html<&'static str> = Html(include_str!("../../ui/index.html"));
+static TRACE_ROOT_PAGE: Html<&'static str> = Html(include_str!("../../ui/trace.html"));
 pub struct JaegerData<I: IntoIterator>(pub I);
 
 #[derive(RustEmbed)]
@@ -71,7 +72,8 @@ pub async fn run_web_server(
         .layer(cors);
 
     let app = Router::new()
-        .route("/", get(|| async { ROOT_PAGE }))
+        .route("/", get(|| async { INDEX_ROOT_PAGE }))
+        .route("/trace", get(|| async { TRACE_ROOT_PAGE }))
         .nest_service("/static", get(static_handler))
         .route("/api/traces", get(trace::list))
         .route("/api/traces/:id", get(trace::get_by_id))
@@ -98,11 +100,13 @@ async fn fallback(uri: Uri) -> impl IntoResponse {
     if path.starts_with("/api") || path.starts_with("/static") {
         // For those routes, we simply return 404 text.
         (StatusCode::NOT_FOUND, "404 Not Found").into_response()
-    } else {
+    } else if path.starts_with("/trace") {
         // Due to the frontend is a SPA (Single Page Application),
         // it has own frontend routes, we should return the ROOT PAGE
         // to avoid frontend route 404.
-        (StatusCode::TEMPORARY_REDIRECT, ROOT_PAGE).into_response()
+        (StatusCode::TEMPORARY_REDIRECT, TRACE_ROOT_PAGE).into_response()
+    } else {
+        (StatusCode::TEMPORARY_REDIRECT, INDEX_ROOT_PAGE).into_response()
     }
 }
 

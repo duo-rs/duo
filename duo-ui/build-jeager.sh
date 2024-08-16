@@ -22,7 +22,7 @@ else
 fi
 
 # Copy index.html file
-cp ${BUILD_DIR}/index.html ${TARGET_DIR}
+cp ${BUILD_DIR}/index.html ${TARGET_DIR}/trace.html
 
 # Copy the rest static files
 cp -r ${BUILD_DIR}/static ${TARGET_DIR}
