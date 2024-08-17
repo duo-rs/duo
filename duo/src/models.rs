@@ -100,9 +100,9 @@ impl Log {
     }
 }
 
-impl From<&proto::Span> for Span {
-    fn from(span: &proto::Span) -> Self {
-        let mut raw_tags = span.tags.clone();
+impl From<proto::Span> for Span {
+    fn from(span: proto::Span) -> Self {
+        let mut raw_tags = span.tags;
         for key in ["busy", "idle"] {
             if let Some(proto::Value {
                 inner: Some(proto::ValueEnum::U64Val(value)),
@@ -121,8 +121,8 @@ impl From<&proto::Span> for Span {
             id: span.id,
             trace_id: span.trace_id,
             parent_id: span.parent_id,
-            process_id: span.process_id.clone(),
-            name: span.name.clone(),
+            process_id: span.process_id,
+            name: span.name,
             start: span
                 .start
                 .and_then(|timestamp| {
