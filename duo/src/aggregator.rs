@@ -1,3 +1,5 @@
+use std::mem;
+
 use duo_api as proto;
 
 use crate::Span;
@@ -29,15 +31,10 @@ impl SpanAggregator {
 
     pub fn aggregate(&mut self) -> Vec<Span> {
         // Remove all intact spans.
-        let mut spans = Vec::new();
-        self.spans.retain(|span| {
-            if span.end.is_some() {
-                spans.push(Span::from(span));
-                false
-            } else {
-                true
-            }
-        });
-        spans
+        let (intact_spans, ongoing_spans): (Vec<_>, Vec<_>) = mem::take(&mut self.spans)
+            .into_iter()
+            .partition(|span| span.end.is_some());
+        self.spans = ongoing_spans;
+        intact_spans.into_iter().map(Span::from).collect()
     }
 }
