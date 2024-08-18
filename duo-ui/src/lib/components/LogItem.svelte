@@ -111,11 +111,13 @@
       {/if}
     </div>
   </div>
-  <Badge
-    class="m-1 flex max-w-24 justify-end text-ellipsis whitespace-nowrap font-normal"
-    variant="outline"
-    >{process_id}
-  </Badge>
+  <div class="min-w-[100px] text-start justify-end">
+    <Badge
+      class="inline max-w-24  text-ellipsis whitespace-nowrap font-normal"
+      variant="outline"
+      >{process_id}
+    </Badge>
+  </div>
 </button>
 <Separator />
 {#if expand}
