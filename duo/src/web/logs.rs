@@ -4,11 +4,13 @@ use axum::extract::{Extension, Path, Query};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
+use datafusion::common::DFSchema;
 use datafusion::functions_aggregate::count::count;
 use datafusion::prelude::*;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
+use tracing::{debug, info, warn};
 
 use crate::query::QueryEngine;
 use crate::{schema, Log, MemoryStore};
@@ -28,7 +30,7 @@ pub(super) struct QueryParameters {
     start: Option<OffsetDateTime>,
     #[serde(default, deserialize_with = "deser::option_miscrosecond")]
     end: Option<OffsetDateTime>,
-    keyword: Option<String>,
+    expr: Option<String>,
     #[serde(default, deserialize_with = "deser::str_sequence")]
     levels: Vec<String>,
 }
@@ -42,12 +44,23 @@ impl QueryParameters {
     fn expr(&self) -> Expr {
         let process_prefix = &self.service;
         let mut expr = col("process_id").like(lit(format!("{process_prefix}%")));
-        if let Some(keyword) = self.keyword.as_ref() {
-            expr = expr.and(col("message").like(lit(format!("%{keyword}%"))));
+        if let Some(sql_expr) = &self.expr {
+            let df_schema = DFSchema::try_from(schema::get_log_schema()).unwrap();
+            match SessionContext::new().parse_sql_expr(sql_expr, &df_schema) {
+                Ok(sql_expr) => {
+                    debug!("Parsed expr: {sql_expr}");
+                    expr = expr.and(sql_expr);
+                }
+                Err(err) => {
+                    warn!("Parse expr failed: {err}");
+                    expr = expr.and(col("message").ilike(lit(format!("%{sql_expr}%"))));
+                }
+            }
         }
         if !self.levels.is_empty() {
             expr = expr.and(col("level").in_list(self.levels.iter().map(lit).collect(), false));
         }
+        info!("Query expr: {expr}");
         expr
     }
 }

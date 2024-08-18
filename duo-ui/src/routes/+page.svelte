@@ -87,8 +87,8 @@
 			start: `${dateTimeToTimestamp(startDate, startDateTime)}000`,
 			end: `${dateTimeToTimestamp(endDate, endDateTime)}000`
 		});
-		if ($searchUi.keyword) {
-			params.append('keyword', $searchUi.keyword);
+		if ($searchUi.expr) {
+			params.append('expr', $searchUi.expr);
 		}
 		return params;
 	}
@@ -170,7 +170,7 @@
 		<Input
 			class="mx-4 max-w-screen-md"
 			placeholder="Search log by keyword"
-			bind:value={$searchUi.keyword}
+			bind:value={$searchUi.expr}
 			on:keydown={onKeydown}
 		/>
 		<div class="mx-6">
@@ -239,7 +239,7 @@
 			{#if logs.length > 0}
 				<ScrollArea class="h-[75vh]">
 					{#each logs as log}
-						<LogItem {...log} keyword={$searchUi.keyword} />
+						<LogItem {...log} keyword={$searchUi.expr} />
 					{/each}
 					<InfiniteLoading on:infinite={infiniteHandler} />
 				</ScrollArea>

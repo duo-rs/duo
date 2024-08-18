@@ -93,19 +93,19 @@
 	class="text-md flex w-full flex-row px-4 py-2 text-sm text-slate-600 hover:cursor-pointer"
 	on:click={() => (expand = !expand)}
 >
-	<div class="flex grow flex-row flex-wrap">
+	<div class="flex grow flex-row" style:color={levelColor}>
 		<div class="text-slate-500">{dayjs(time / 1000).format('YYYY-MM-DD HH:mm:ss.SSS')}</div>
-		<div class="flex" style:color={levelColor}>
-			<div class="mx-2 w-10"><code>{level}</code></div>
+		<div class="mx-2 w-10"><code>{level}</code></div>
+		<div class="flex flex-wrap text-start">
 			<div class="mx-2">{@html matchKeyword(message)}</div>
+			{#if $$restProps}
+				{#each Object.entries($$restProps) as [key, value]}
+					<div class="mx-2">
+						<span class="mr-1 rounded-sm bg-slate-100 px-2 py-1">{key}:</span><span>{value}</span>
+					</div>
+				{/each}
+			{/if}
 		</div>
-		{#if $$restProps}
-			{#each Object.entries($$restProps) as [key, value]}
-				<div class="mx-2">
-					<span class="mr-1 rounded-sm bg-slate-100 px-2 py-1">{key}:</span><span>{value}</span>
-				</div>
-			{/each}
-		{/if}
 	</div>
 	<Badge class="flex items-center self-end" variant="outline">{process_id}</Badge>
 </button>
