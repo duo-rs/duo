@@ -98,23 +98,22 @@
       <code>{dayjs(time / 1000).format('YYYY-MM-DD HH:mm:ss.SSS')}</code>
     </div>
     <div class="min-w-[55px] p-1"><code>{level}</code></div>
-    <div class="flex grow flex-wrap p-1 text-start text-sm">
+    <div class="flex grow flex-wrap items-center p-1 text-start text-sm">
       {@html matchKeyword(message)}
     </div>
-    <div class="flex min-w-28 max-w-28 flex-wrap text-ellipsis">
+    <div class="flex min-w-28 max-w-36 flex-wrap">
       {#if $$restProps}
         {#each Object.entries($$restProps) as [key, value]}
           <div class="my-1">
-            <span class="mr-1 rounded-sm bg-slate-100 px-2 py-1">{key}:</span><span>{value}</span>
+            <span class="mr-1 rounded-sm bg-slate-100 px-2 py-1">{key}:</span>
+            <span class="line-clamp-3">{value}</span>
           </div>
         {/each}
       {/if}
     </div>
   </div>
-  <div class="min-w-[100px] text-start justify-end">
-    <Badge
-      class="inline max-w-24  text-ellipsis whitespace-nowrap font-normal"
-      variant="outline"
+  <div class="min-w-[100px] justify-end text-start">
+    <Badge class="inline max-w-24  text-ellipsis whitespace-nowrap font-normal" variant="outline"
       >{process_id}
     </Badge>
   </div>

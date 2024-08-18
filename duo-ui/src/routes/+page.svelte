@@ -169,7 +169,7 @@
     ></Svelecte>
     <Input
       class="mx-4 max-w-screen-md"
-      placeholder="Search log by keyword"
+      placeholder="Input sql filter expression (e.g level='DEBUG') or any keyword"
       bind:value={$searchUi.expr}
       on:keydown={onKeydown}
     />

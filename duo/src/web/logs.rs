@@ -31,8 +31,6 @@ pub(super) struct QueryParameters {
     #[serde(default, deserialize_with = "deser::option_miscrosecond")]
     end: Option<OffsetDateTime>,
     expr: Option<String>,
-    #[serde(default, deserialize_with = "deser::str_sequence")]
-    levels: Vec<String>,
 }
 
 #[tracing::instrument]
@@ -57,10 +55,7 @@ impl QueryParameters {
                 }
             }
         }
-        if !self.levels.is_empty() {
-            expr = expr.and(col("level").in_list(self.levels.iter().map(lit).collect(), false));
-        }
-        info!("Query expr: {expr}");
+        info!(expr = ?expr, "Query expr: ");
         expr
     }
 }
