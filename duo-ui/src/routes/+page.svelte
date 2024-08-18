@@ -45,7 +45,6 @@
    * @type {Object[]}
    */
   let logs = [];
-  let limit = 50;
   let isOpen = false;
   /**
    * @type {string}
@@ -81,7 +80,7 @@
   function queryParams() {
     let params = new URLSearchParams({
       service: $searchUi.currentSevice,
-      limit: `${limit}`,
+      limit: `${$searchUi.perPage}`,
       skip: `${logs.length}`,
       // start/end should be microseconds
       start: `${dateTimeToTimestamp(startDate, startDateTime)}000`,
@@ -124,7 +123,7 @@
       let newBatch = await api.searchLogs(queryParams());
       console.log('infiniteHandler, len:', newBatch.length);
       logs = [...logs, ...newBatch];
-      if (newBatch.length < limit) {
+      if (newBatch.length < $searchUi.perPage) {
         complete();
       } else {
         loaded();
@@ -147,6 +146,9 @@
   onMount(async () => {
     if (!$searchUi.currentSevice && data.services && data.services.length > 0) {
       $searchUi.currentSevice = data.services[0];
+    }
+    if (!$searchUi.perPage) {
+      $searchUi.perPage = 50;
     }
     await search();
   });
@@ -257,4 +259,19 @@
       {/if}
     </Resizable.Pane>
   </Resizable.PaneGroup>
+  <div
+    class="absolute bottom-0 right-0 flex flex-row items-center justify-end rounded bg-gray-100 py-2 px-4"
+  >
+    <span>
+      Loaded: {logs.length}
+    </span>
+    <span class="pl-4">
+      Per page:
+      <select bind:value={$searchUi.perPage} on:change={search} class="border">
+        {#each [10, 20, 50, 100, 500] as perPage}
+          <option value={perPage}>{perPage}</option>
+        {/each}
+      </select>
+    </span>
+  </div>
 </div>
