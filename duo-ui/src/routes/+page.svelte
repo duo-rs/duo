@@ -203,7 +203,7 @@
 		<Button on:click={search}>Search</Button>
 	</div>
 	<Separator class="my-8" />
-	<Resizable.PaneGroup direction="horizontal" class="rounded-lg border py-2">
+	<Resizable.PaneGroup direction="horizontal" class="rounded-lg border">
 		<Resizable.Pane defaultSize={18} minSize={12} maxSize={24}>
 			<h2 class="px-4 py-2 text-center text-lg font-bold">Fields</h2>
 			{#each filterableFields() as field}
@@ -236,6 +236,15 @@
 		</Resizable.Pane>
 		<Resizable.Handle />
 		<Resizable.Pane defaultSize={80} minSize={48}>
+			<div
+				class="w-full flex flex-row items-center bg-gray-100 text-start text-xs font-semibold uppercase tracking-wider text-gray-600"
+			>
+				<div class="py-2 px-1 min-w-[180px]">Timestamp</div>
+				<div class="py-2 px-1 min-w-[55px]">Level</div>
+				<div class="py-2 px-1 grow">Message</div>
+				<div class="py-2 px-1 min-w-[100px]">Fields</div>
+				<div class="py-2 px-1 min-w-[100px] justify-end">Process</div>
+			</div>
 			{#if logs.length > 0}
 				<ScrollArea class="h-[75vh]">
 					{#each logs as log}

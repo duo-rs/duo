@@ -90,24 +90,32 @@
 </script>
 
 <button
-	class="text-md flex w-full flex-row px-4 py-2 text-sm text-slate-600 hover:cursor-pointer"
+	class="text-md flex w-full flex-row items-center py-1 text-xs text-slate-600 hover:cursor-pointer"
 	on:click={() => (expand = !expand)}
 >
-	<div class="flex grow flex-row" style:color={levelColor}>
-		<div class="text-slate-500">{dayjs(time / 1000).format('YYYY-MM-DD HH:mm:ss.SSS')}</div>
-		<div class="mx-2 w-10"><code>{level}</code></div>
-		<div class="flex flex-wrap text-start">
-			<div class="mx-2">{@html matchKeyword(message)}</div>
+	<div class="flex grow flex-row items-center text-start" style:color={levelColor}>
+		<div class="min-w-[180px] whitespace-nowrap p-1 text-slate-500">
+			<code>{dayjs(time / 1000).format('YYYY-MM-DD HH:mm:ss.SSS')}</code>
+		</div>
+		<div class="min-w-[55px] p-1"><code>{level}</code></div>
+		<div class="flex grow flex-wrap p-1 text-start text-sm">
+			{@html matchKeyword(message)}
+		</div>
+		<div class="flex min-w-28 max-w-28 flex-wrap text-ellipsis">
 			{#if $$restProps}
 				{#each Object.entries($$restProps) as [key, value]}
-					<div class="mx-2">
+					<div class="my-1">
 						<span class="mr-1 rounded-sm bg-slate-100 px-2 py-1">{key}:</span><span>{value}</span>
 					</div>
 				{/each}
 			{/if}
 		</div>
 	</div>
-	<Badge class="flex items-center self-end" variant="outline">{process_id}</Badge>
+	<Badge
+		class="m-1 flex max-w-24 justify-end text-ellipsis whitespace-nowrap font-normal"
+		variant="outline"
+		>{process_id}
+	</Badge>
 </button>
 <Separator />
 {#if expand}
