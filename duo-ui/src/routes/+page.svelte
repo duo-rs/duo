@@ -77,6 +77,9 @@
     );
   }
 
+  /**
+   * @returns {URLSearchParams}
+   */
   function queryParams() {
     let params = new URLSearchParams({
       service: $searchUi.currentSevice,
@@ -103,7 +106,11 @@
   async function getFieldStats(field) {
     let max = 0;
     let total = 0;
-    let items = await api.getFieldStats(field, queryParams());
+    // Remove limit/skip from field stats query
+    let params = queryParams();
+    params.delete('limit');
+    params.delete('skip');
+    let items = await api.getFieldStats(field, params);
     for (let item of items) {
       total += item.count;
       max = Math.max(max, item.count);
@@ -260,7 +267,7 @@
     </Resizable.Pane>
   </Resizable.PaneGroup>
   <div
-    class="absolute bottom-0 right-0 flex flex-row items-center justify-end rounded bg-gray-100 py-2 px-4"
+    class="absolute bottom-0 right-0 flex flex-row items-center justify-end rounded bg-gray-100 px-4 py-2"
   >
     <span>
       Loaded: {logs.length}

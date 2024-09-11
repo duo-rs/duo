@@ -104,7 +104,7 @@
     <div class="flex min-w-28 max-w-36 flex-wrap">
       {#if $$restProps}
         {#each Object.entries($$restProps) as [key, value]}
-          <div class="my-1">
+          <div class="my-1 mr-1 flex flex-row justify-start items-center">
             <span class="mr-1 rounded-sm bg-slate-100 px-2 py-1">{key}:</span>
             <span class="line-clamp-3">{value}</span>
           </div>
