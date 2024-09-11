@@ -1,0 +1,7 @@
+data_dir = "./data"
+
+[storage.local]
+
+# [storage.s3]
+# bucket = "my-bucket"
+# region = "us-east-1"

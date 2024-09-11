@@ -2,10 +2,12 @@ use std::sync::Arc;
 use std::{collections::HashMap, fmt::Debug, fs::File, io::Write, mem, path::Path};
 
 use crate::arrow::{convert_log_to_record_batch, convert_span_to_record_batch};
-use crate::{schema, Log, Process, Span};
+use crate::ipc::IpcFile;
+use crate::{config, schema, Log, Process, Span};
 use anyhow::Result;
 use arrow_schema::Schema;
 use datafusion::arrow::array::RecordBatch;
+
 use duo_api as proto;
 
 pub struct MemoryStore {
@@ -42,17 +44,28 @@ impl MemoryStore {
         }
     }
 
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let path = path.as_ref().join("process.json");
+    pub fn load() -> Result<Self> {
+        let config = config::load();
+        let path = Path::new(&config.data_dir);
+        let ipc_file = IpcFile::new();
+        let span_batches = ipc_file.read_span_ipc()?;
+        let log_batches = ipc_file.read_log_ipc()?;
+        let mut store = Self {
+            span_batches,
+            log_batches,
+            services: HashMap::new(),
+            log_schema: schema::get_log_schema(),
+            is_dirty: false,
+        };
+        let path = path.join("process.json");
         if !path.exists() {
-            return Ok(Self::new());
+            return Ok(store);
         }
-
         let data: Vec<Process> = match serde_json::from_reader(File::open(path)?) {
             Ok(data) => data,
             Err(err) => {
                 println!("Warning: read process.json failed: {err}");
-                return Ok(Self::new());
+                return Ok(store);
             }
         };
         let mut services = HashMap::<String, Vec<_>>::new();
@@ -63,7 +76,6 @@ impl MemoryStore {
                 .push(process);
         });
 
-        let mut store = Self::new();
         store.services = services;
         Ok(store)
     }
@@ -107,7 +119,7 @@ impl MemoryStore {
                 .map(|(key, value)| (key, value.into()))
                 .collect(),
         });
-        self.write_process(".")?;
+        self.write_process()?;
         Ok(process_id)
     }
 
@@ -126,8 +138,9 @@ impl MemoryStore {
         self.is_dirty = true;
     }
 
-    fn write_process<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let mut file = File::create(path.as_ref().join("process.json"))?;
+    fn write_process(&self) -> Result<()> {
+        let config = config::load();
+        let mut file = File::create(Path::new(&config.data_dir).join("process.json"))?;
         file.write_all(
             serde_json::to_string(&self.processes().values().collect::<Vec<_>>())?.as_bytes(),
         )?;

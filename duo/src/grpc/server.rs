@@ -1,7 +1,6 @@
-use std::{fs::File, mem, sync::Arc, time::Duration};
+use std::{mem, sync::Arc, time::Duration};
 
-use crate::{partition::PartitionWriter, schema, Log, MemoryStore, SpanAggregator};
-use datafusion::arrow::ipc::writer::FileWriter;
+use crate::{ipc::IpcFile, partition::PartitionWriter, schema, Log, MemoryStore, SpanAggregator};
 use duo_api::instrument::{
     instrument_server::Instrument, RecordEventRequest, RecordEventResponse, RecordSpanRequest,
     RecordSpanResponse, RegisterProcessRequest, RegisterProcessResponse,
@@ -68,26 +67,15 @@ impl DuoServer {
                     continue;
                 }
 
+                let ipc_file = IpcFile::new();
                 if !guard.span_batches.is_empty() {
-                    let mut span_writer = FileWriter::try_new(
-                        File::create("span.arrow").unwrap(),
-                        &schema::get_span_schema(),
-                    )
-                    .unwrap();
-                    for batch in &guard.span_batches {
-                        span_writer.write(batch).unwrap();
-                    }
-                    span_writer.finish().unwrap();
+                    ipc_file.write_span_ipc(&guard.span_batches).unwrap();
                 }
 
                 if !guard.log_batches.is_empty() {
-                    let mut log_writer =
-                        FileWriter::try_new(File::create("log.arrow").unwrap(), &guard.log_schema)
-                            .unwrap();
-                    for batch in &guard.log_batches {
-                        log_writer.write(batch).unwrap();
-                    }
-                    log_writer.finish().unwrap();
+                    ipc_file
+                        .write_log_ipc(&guard.log_batches, &guard.log_schema)
+                        .unwrap();
                 }
                 drop(guard);
 
@@ -125,6 +113,9 @@ impl DuoServer {
                     pw.write_partition("log", &log_batches).await.unwrap();
                     println!("write partition done: log");
                 }
+
+                let ipc_file = IpcFile::new();
+                ipc_file.clear().unwrap();
             }
         });
     }

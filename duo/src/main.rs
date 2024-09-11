@@ -21,6 +21,7 @@ mod aggregator;
 mod arrow;
 mod config;
 mod grpc;
+mod ipc;
 mod memory;
 mod models;
 mod partition;
@@ -83,13 +84,14 @@ async fn main() -> Result<()> {
         println!("Running Duo in memory mode, all data will be lost after the process exits");
     }
 
-    if let Some(config_file) = config_file {
-        let config = DuoConfig::parse_from_toml(config_file)?;
-        config::set(config);
-        schema::load().await?;
-    }
+    let config = match config_file {
+        Some(config_file) => DuoConfig::parse_from_toml(config_file)?,
+        None => DuoConfig::default(),
+    };
+    config::set(config);
+    schema::load().await?;
 
-    let memory_store = Arc::new(RwLock::new(MemoryStore::load(".")?));
+    let memory_store = Arc::new(RwLock::new(MemoryStore::load()?));
     spawn_grpc_server(Arc::clone(&memory_store), grpc_port);
 
     let duo_layer = if collect_self {

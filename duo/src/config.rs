@@ -13,14 +13,24 @@ static DUO_CONFIG: OnceLock<Arc<DuoConfig>> = OnceLock::new();
 
 #[derive(Debug, Deserialize)]
 pub struct DuoConfig {
+    pub data_dir: String,
     storage: StorageConfig,
+}
+
+impl Default for DuoConfig {
+    fn default() -> Self {
+        Self {
+            data_dir: "data".to_string(),
+            storage: Default::default(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum StorageConfig {
     Local {
-        dir: String,
+        dir: Option<String>,
     },
     S3 {
         bucket: String,
@@ -28,6 +38,12 @@ enum StorageConfig {
         aws_access_key: Option<String>,
         aws_access_secret: Option<String>,
     },
+}
+
+impl Default for StorageConfig {
+    fn default() -> Self {
+        Self::Local { dir: None }
+    }
 }
 
 pub fn load() -> Arc<DuoConfig> {
@@ -53,7 +69,8 @@ impl DuoConfig {
     pub fn object_store_url(&self) -> Url {
         match &self.storage {
             StorageConfig::Local { dir } => {
-                let path = Path::new(dir);
+                let dir = dir.as_ref().unwrap_or(&self.data_dir);
+                let path = Path::new(&dir);
                 if path.is_relative() {
                     if let Ok(cwd) = env::current_dir() {
                         let path = cwd.join(path);
@@ -76,6 +93,7 @@ impl DuoConfig {
     pub fn object_store(&self) -> Arc<dyn ObjectStore> {
         match &self.storage {
             StorageConfig::Local { dir } => {
+                let dir = dir.as_ref().unwrap_or(&self.data_dir);
                 let path = Path::new(dir);
                 if !path.exists() {
                     std::fs::create_dir_all(path).unwrap();

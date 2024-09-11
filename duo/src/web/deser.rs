@@ -26,6 +26,7 @@ where
     d.deserialize_any(ListValueVisitor)
 }
 
+#[allow(unused)]
 pub fn str_sequence<'de, D>(d: D) -> Result<Vec<String>, D::Error>
 where
     D: de::Deserializer<'de>,
@@ -84,6 +85,7 @@ pub mod level {
     }
 }
 
+#[allow(unused)]
 struct SeparatedSequenceVisitor<T: FromStr>(PhantomData<T>);
 
 impl<'de, T: FromStr> de::Visitor<'de> for SeparatedSequenceVisitor<T> {
