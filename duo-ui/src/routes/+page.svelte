@@ -83,8 +83,6 @@
   function queryParams() {
     let params = new URLSearchParams({
       service: $searchUi.currentSevice,
-      limit: `${$searchUi.perPage}`,
-      skip: `${logs.length}`,
       // start/end should be microseconds
       start: `${dateTimeToTimestamp(startDate, startDateTime)}000`,
       end: `${dateTimeToTimestamp(endDate, endDateTime)}000`,
@@ -106,11 +104,7 @@
   async function getFieldStats(field) {
     let max = 0;
     let total = 0;
-    // Remove limit/skip from field stats query
-    let params = queryParams();
-    params.delete('limit');
-    params.delete('skip');
-    let items = await api.getFieldStats(field, params);
+    let items = await api.getFieldStats(field, queryParams());
     for (let item of items) {
       total += item.count;
       max = Math.max(max, item.count);
@@ -127,7 +121,10 @@
    */
   async function infiniteHandler({ detail: { loaded, complete, error } }) {
     try {
-      let newBatch = await api.searchLogs(queryParams());
+      let params = queryParams();
+      params.set('skip', `${logs.length}`);
+      params.set('limit', `${$searchUi.perPage}`);
+      let newBatch = await api.searchLogs(params);
       console.log('infiniteHandler, len:', newBatch.length);
       logs = [...logs, ...newBatch];
       if (newBatch.length < $searchUi.perPage) {
