@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use datafusion::arrow::array::RecordBatch;
 use datafusion::parquet::arrow::AsyncArrowWriter;
+use datafusion::parquet::schema::types::ColumnPath;
+use datafusion::{arrow::array::RecordBatch, parquet::file::properties::WriterProperties};
 use object_store::{path::Path, ObjectStore};
 use rand::{rngs::ThreadRng, Rng};
 use time::OffsetDateTime;
@@ -41,7 +42,12 @@ impl PartitionWriter {
         };
 
         let mut buffer = vec![];
-        let mut writer = AsyncArrowWriter::try_new(&mut buffer, schema, None)?;
+        // Enable bloom filter for trace_id column,
+        // both span and log have trace_id column
+        let properties = WriterProperties::builder()
+            .set_column_bloom_filter_enabled(ColumnPath::from("trace_id"), true)
+            .build();
+        let mut writer = AsyncArrowWriter::try_new(&mut buffer, schema, Some(properties))?;
         for rb in record_batchs {
             writer.write(rb).await?;
         }

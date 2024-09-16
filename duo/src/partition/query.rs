@@ -8,7 +8,7 @@ use datafusion::{
         listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
         TableProvider,
     },
-    prelude::{DataFrame, Expr, SessionContext},
+    prelude::{DataFrame, Expr, SessionConfig, SessionContext},
 };
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -25,7 +25,10 @@ pub struct PartitionQuery {
 
 impl PartitionQuery {
     pub fn new(start: OffsetDateTime, end: OffsetDateTime) -> Self {
-        let ctx = SessionContext::new();
+        let ctx = SessionContext::new_with_config(
+            // Enable bloom filter pruning for parquet readers
+            SessionConfig::new().with_parquet_bloom_filter_pruning(true),
+        );
         let config = config::load();
         let object_store_url = config.object_store_url();
         ctx.register_object_store(&object_store_url, config.object_store());
