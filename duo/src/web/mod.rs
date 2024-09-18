@@ -27,18 +27,13 @@ pub struct JaegerData<I: IntoIterator>(pub I);
 #[folder = "ui"]
 struct UiAssets;
 
-pub struct StaticFile<T>(pub T);
+pub struct StaticFile(Uri);
 
-impl<T> IntoResponse for StaticFile<T>
-where
-    T: Into<String>,
-{
+impl IntoResponse for StaticFile {
     fn into_response(self) -> Response {
-        let path = self.0.into();
-
-        let new_path = match path.as_ref() {
-            "" | "/" => "index.html",
-            p if p.starts_with("trace") => "trace.html",
+        let new_path = match self.0.path().trim_start_matches('/') {
+            "" => "index.html",
+            p if p.starts_with("trace") || p.starts_with("search") => "trace.html",
             p => p,
         };
         // println!("path: {}, new_path: {}", path, new_path);
@@ -92,7 +87,7 @@ pub async fn run_web_server(
 }
 
 async fn static_handler(uri: Uri) -> impl IntoResponse {
-    StaticFile(uri.path().trim_start_matches('/').to_string())
+    StaticFile(uri)
 }
 
 #[tracing::instrument]
