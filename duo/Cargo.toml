@@ -9,8 +9,8 @@ license.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-datafusion = "41"
-arrow-schema = { version = "52.2.0", features = ["serde"] }
+datafusion = "42"
+arrow-schema = { version = "53.0", features = ["serde"] }
 axum = "0.7"
 rand.workspace = true
 clap = { version = "4", default-features = false, features = ["std", "derive"] }
@@ -27,7 +27,7 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 rust-embed = "8.5"
 mime_guess = "2"
-object_store = { version = "0.10.2", features = ["aws"] }
+object_store = { version = "0.11", features = ["aws"] }
 url = "2.5.2"
 toml = "0.8.19"
 tower-http = { version = "0.5.2", features = ["cors"] }

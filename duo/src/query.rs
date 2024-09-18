@@ -8,6 +8,7 @@ use crate::MemoryStore;
 
 use anyhow::{Ok, Result};
 use datafusion::datasource::MemTable;
+use datafusion::logical_expr::SortExpr;
 use datafusion::prelude::DataFrame;
 use datafusion::prelude::SessionContext;
 use datafusion::prelude::{col, Expr};
@@ -58,7 +59,7 @@ pub struct Query {
     memtable: MemTable,
     start: Option<OffsetDateTime>,
     end: Option<OffsetDateTime>,
-    sort_expr: Vec<Expr>,
+    sort_expr: Vec<SortExpr>,
     limit: Option<usize>,
     skip: usize,
 }
@@ -111,7 +112,7 @@ impl Query {
         Ok(df.filter(self.expr)?.limit(self.skip, self.limit)?)
     }
 
-    pub fn sort(self, sort_expr: Vec<Expr>) -> Self {
+    pub fn sort(self, sort_expr: Vec<SortExpr>) -> Self {
         Self { sort_expr, ..self }
     }
 
